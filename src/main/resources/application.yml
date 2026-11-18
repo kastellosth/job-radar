@@ -1,0 +1,101 @@
+spring:
+  application:
+    name: job-radar
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/jobradar}
+    username: ${DB_USER:jobradar}
+    password: ${DB_PASSWORD:jobradar}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+radar:
+  # Spring cron (sec min hour day month weekday), Europe/Athens time. Default: 08:00 and 18:00 every day.
+  schedule: "0 0 8,18 * * *"
+
+  sources:
+    # Workable: the slug after apply.workable.com/ on a company's careers page.
+    workable:
+      - cosmos-sport-s-dot-a
+      - allwynls
+      # add more, e.g. any Greek company whose careers page is apply.workable.com/<slug>
+    # SmartRecruiters: the id after careers.smartrecruiters.com/ or jobs.smartrecruiters.com/
+    smartrecruiters:
+      - NetcompanyIntrasoft
+    # Greenhouse board tokens (boards.greenhouse.io/<token>)
+    greenhouse: []
+    # Lever company slugs (jobs.lever.co/<slug>)
+    lever: []
+    # Remote jobs: one Remotive search per term
+    remotive-searches:
+      - java
+      - spring
+      - react
+      - node
+
+  profile:
+    # Points when the keyword appears in the title or description.
+    skills:
+      java: 3
+      spring boot: 3
+      spring: 1
+      hibernate: 1
+      jpa: 1
+      postgresql: 1
+      sql: 1
+      rest: 1
+      docker: 1
+      junit: 1
+      react: 2
+      typescript: 2
+      node.js: 1
+      javascript: 1
+      microservices: 1
+      test automation: 1
+    # Extra points when the keyword is in the job title itself.
+    title-boosts:
+      junior: 4
+      graduate: 4
+      entry: 3
+      trainee: 3
+      intern: 1
+      associate: 2
+      backend: 2
+      back end: 2
+      full stack: 2
+      fullstack: 2
+      java: 2
+    # Negative points: roles he should not spend time on.
+    penalties:
+      senior: -8
+      lead: -8
+      principal: -8
+      architect: -6
+      head of: -8
+      manager: -5
+      german: -6
+      master's degree: -2
+    # Non-remote jobs must be in one of these (substring match on the location text).
+    locations:
+      - greece
+      - athens
+      - αθήνα
+      - thessaloniki
+      - θεσσαλονίκη
+      - patras
+      - ioannina
+      - heraklion
+      - ηράκλειο
+      - crete
+      - marousi
+      - piraeus
+    strong-threshold: 9
+    good-threshold: 5
+    stretch-threshold: 2
+
+logging:
+  level:
+    gr.kastellos.jobradar: INFO

@@ -1,0 +1,14 @@
+{
+  "job-count": 3,
+  "jobs": [
+    { "id": 1, "url": "https://remotive.com/remote-jobs/software-dev/1", "title": "Junior Java Developer",
+      "company_name": "Acme", "candidate_required_location": "Europe", "publication_date": "2026-11-14T08:00:00",
+      "description": "<p>Java</p>" },
+    { "id": 2, "url": "https://remotive.com/remote-jobs/software-dev/2", "title": "Backend Engineer",
+      "company_name": "Beta", "candidate_required_location": "USA only", "publication_date": "2026-11-14T08:00:00",
+      "description": "<p>Go</p>" },
+    { "id": 3, "url": "https://remotive.com/remote-jobs/software-dev/3", "title": "Junior React Developer",
+      "company_name": "Gamma", "candidate_required_location": "Worldwide", "publication_date": "2026-11-13T08:00:00",
+      "description": "<p>React</p>" }
+  ]
+}

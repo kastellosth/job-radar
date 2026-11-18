@@ -1,0 +1,28 @@
+{
+  "name": "Acme Hellas",
+  "description": "",
+  "jobs": [
+    {
+      "title": "Junior Backend Developer (Java)",
+      "shortcode": "ABC123",
+      "employment_type": "Full-time",
+      "telecommuting": false,
+      "department": "Engineering",
+      "url": "https://apply.workable.com/j/ABC123",
+      "published_on": "2026-11-10",
+      "country": "Greece",
+      "city": "Athens",
+      "description": "<p>Work with <strong>Java</strong> &amp; Spring Boot. 0-2 years.</p>"
+    },
+    {
+      "title": "Junior QA Engineer",
+      "shortcode": "DEF456",
+      "telecommuting": true,
+      "url": "https://apply.workable.com/j/DEF456",
+      "published_on": "2026-11-12",
+      "country": "Greece",
+      "city": null,
+      "description": "<p>Selenium</p>"
+    }
+  ]
+}

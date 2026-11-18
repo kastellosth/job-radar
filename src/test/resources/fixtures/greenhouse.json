@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    {
+      "id": 4012345,
+      "title": "Graduate Software Engineer",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/4012345",
+      "location": { "name": "Remote - Europe" },
+      "updated_at": "2026-11-11T10:00:00-05:00",
+      "content": "&lt;p&gt;Java and React. Remote within Europe.&lt;/p&gt;"
+    }
+  ]
+}

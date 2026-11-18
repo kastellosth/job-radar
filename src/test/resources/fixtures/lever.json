@@ -1,0 +1,11 @@
+[
+  {
+    "id": "a1b2c3",
+    "text": "Junior Full Stack Engineer",
+    "hostedUrl": "https://jobs.lever.co/acme/a1b2c3",
+    "createdAt": 1762790400000,
+    "workplaceType": "remote",
+    "categories": { "location": "Europe", "commitment": "Full-time", "team": "Engineering" },
+    "descriptionPlain": "TypeScript, React, Node.js."
+  }
+]
