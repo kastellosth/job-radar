@@ -52,18 +52,26 @@ LinkedIn, Glassdoor and similar sites are deliberately not scraped: their terms 
 ## Tests
 
 ```bash
-./mvnw test
+./mvnw test      # unit tests only: fast, no Docker
+./mvnw verify    # also the *IT integration tests: needs Docker running
 ```
+
+Unit tests:
 
 - `JobScorerTest`: scoring rules, word boundaries (`java` ≠ `javascript`, `node.js` and `c#` still match), location filter, experience parsing in English and Greek, bucket thresholds.
 - `JobPostingTest`: deduplication across boards, Greek accents, remote jobs.
 - `SourceParsingTest`: each provider mapped from a saved sample response, no network.
 - `IngestServiceTest`: duplicates stored once, status survives a refresh, one broken source doesn't stop the run.
 
+Integration tests (Testcontainers starts a throw-away `postgres:16-alpine`; the Flyway migrations build the schema):
+
+- `JobRepositoryIT`: lookup by fingerprint, the UNIQUE constraint rejects a duplicate, the dashboard query hides SKIP/HIDDEN jobs and sorts best first.
+- `IngestServiceIT`: a full ingest in the real Spring context with stub job boards: real scoring from `application.yml`, the same job from two boards stored once, a refreshed score is really written to the database while his status is kept, and a board that is down doesn't stop the others.
+
 ## Roadmap
 
 - [ ] React + TypeScript dashboard (replace `static/index.html`)
-- [ ] Testcontainers integration test for the repository and the full ingest
+- [x] Testcontainers integration test for the repository and the full ingest
 - [ ] Fetch full SmartRecruiters job descriptions for promising titles
 - [ ] Weekly email digest of new STRONG matches
 - [ ] Optional LLM re-ranking of the top 20 jobs against the CV
