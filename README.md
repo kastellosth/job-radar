@@ -36,6 +36,26 @@ curl localhost:8080/api/jobs
 curl -X PATCH localhost:8080/api/jobs/42/status -H 'Content-Type: application/json' -d '{"status":"APPLIED"}'
 ```
 
+### As a Docker image
+
+The `Dockerfile` builds the jar with Maven, then copies it into a small JRE 21 image that runs as a non-root user.
+
+```bash
+docker build -t job-radar .
+docker run -p 8080:8080 -e DB_URL=jdbc:postgresql://host.docker.internal:5432/jobradar job-radar
+```
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PORT` | `8080` | HTTP port (Render sets it) |
+| `DB_URL` | `jdbc:postgresql://localhost:5432/jobradar` | JDBC URL of the database |
+| `DB_USER` / `DB_PASSWORD` | `jobradar` / `jobradar` | Database login |
+
+### Deploy to Render
+
+Create a **Web Service** from this repository with runtime **Docker**, and set `DB_URL`, `DB_USER` and `DB_PASSWORD` to a hosted PostgreSQL (for example Neon). Flyway creates the schema on the first start.
+On the free plan the service sleeps after 15 minutes without requests, so the 08:00 and 18:00 runs only happen if it is awake; use **Fetch new jobs now** (or `POST /api/ingest`) after opening it.
+
 ## Add a company
 
 Find the company's careers page and copy its slug into `application.yml`:
