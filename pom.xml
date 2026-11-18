@@ -19,6 +19,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Boot 3.5.0 brings 1.21.0, which Docker 29 (GitHub's Ubuntu 26 runners) rejects as too old. -->
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
 
     <dependencies>
