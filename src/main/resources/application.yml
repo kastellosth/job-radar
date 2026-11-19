@@ -25,23 +25,32 @@ radar:
 
   sources:
     # Workable: the slug after apply.workable.com/ on a company's careers page.
+    # Companies with software jobs in Greece, each checked against the live API on 2026-11-19.
     workable:
-      - cosmos-sport-s-dot-a
-      - allwynls
-      # add more, e.g. any Greek company whose careers page is apply.workable.com/<slug>
+      - european-dynamics
+      - qualcogroup
+      - agileactors
+      - uni-systems
+      - learnworlds
+      - epignosis
+      - upstream
+      - welcomepickups
+      - adaptit
+      - performance-technologies
+      - stoiximan
+      - skroutz
+      - orfium
+      - deeplab
     # SmartRecruiters: the id after careers.smartrecruiters.com/ or jobs.smartrecruiters.com/
     smartrecruiters:
-      - NetcompanyIntrasoft
+      - NetcompanyIntrasoft  # a big employer, no openings on 2026-11-19
     # Greenhouse board tokens (boards.greenhouse.io/<token>)
-    greenhouse: []
+    greenhouse:
+      - kaizengaming
     # Lever company slugs (jobs.lever.co/<slug>)
     lever: []
-    # Remote jobs: one Remotive search per term
-    remotive-searches:
-      - java
-      - spring
-      - react
-      - node
+    # Remote software jobs open to Greece/Europe, one call per run
+    remotive: true
 
   profile:
     # Points when the keyword appears in the title or description.

@@ -12,20 +12,23 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "radar")
 public record RadarProperties(Sources sources, Profile profile) {
 
-    /** Company identifiers ("slugs") per job-board provider. */
+    /**
+     * Company identifiers ("slugs") per job-board provider.
+     *
+     * @param remotive whether to read Remotive's remote software jobs (one call per run)
+     */
     public record Sources(
             List<String> workable,
             List<String> smartrecruiters,
             List<String> greenhouse,
             List<String> lever,
-            List<String> remotiveSearches) {
+            boolean remotive) {
 
         public Sources {
             workable = orEmpty(workable);
             smartrecruiters = orEmpty(smartrecruiters);
             greenhouse = orEmpty(greenhouse);
             lever = orEmpty(lever);
-            remotiveSearches = orEmpty(remotiveSearches);
         }
     }
 

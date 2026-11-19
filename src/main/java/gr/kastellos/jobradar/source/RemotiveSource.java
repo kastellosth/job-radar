@@ -3,8 +3,6 @@ package gr.kastellos.jobradar.source;
 import com.fasterxml.jackson.databind.JsonNode;
 import gr.kastellos.jobradar.config.RadarProperties;
 import gr.kastellos.jobradar.domain.JobPosting;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -14,23 +12,23 @@ import java.util.Locale;
 
 /**
  * Remotive public API for remote jobs.
- * GET https://remotive.com/api/remote-jobs?category=software-dev&search={term}
- * Their terms ask you to link back to Remotive and not to call the API more than a few times a day,
- * which the default schedule respects. Only jobs whose allowed location includes Greece/Europe/Worldwide are kept.
+ * GET https://remotive.com/api/remote-jobs?category=software-dev
+ * One call per run: the free API returns the same short list whatever the search term, and its terms ask for
+ * at most four calls a day and a link back to Remotive (the dashboard shows "via Remotive" and links their page).
+ * Only jobs whose allowed location includes Greece/Europe/Worldwide are kept.
  */
 @Component
 public class RemotiveSource implements JobSource {
 
-    private static final Logger log = LoggerFactory.getLogger(RemotiveSource.class);
     private static final List<String> ALLOWED_REGIONS =
             List.of("greece", "europe", "eu", "emea", "worldwide", "anywhere");
 
     private final RestClient http;
-    private final List<String> searches;
+    private final boolean enabled;
 
     public RemotiveSource(RestClient.Builder builder, RadarProperties props) {
         this.http = builder.baseUrl("https://remotive.com").build();
-        this.searches = props.sources().remotiveSearches();
+        this.enabled = props.sources().remotive();
     }
 
     @Override
@@ -38,21 +36,17 @@ public class RemotiveSource implements JobSource {
         return "remotive";
     }
 
+    /** A single source call: a failure is thrown, so the ingest service logs it and carries on. */
     @Override
     public List<JobPosting> fetch() {
-        List<JobPosting> all = new ArrayList<>();
-        for (String term : searches) {
-            try {
-                JsonNode body = http.get()
-                        .uri("/api/remote-jobs?category=software-dev&search={term}", term)
-                        .retrieve()
-                        .body(JsonNode.class);
-                all.addAll(parse(body));
-            } catch (RuntimeException e) {
-                log.warn("Remotive search '{}' failed: {}", term, e.getMessage());
-            }
+        if (!enabled) {
+            return List.of();
         }
-        return all;
+        JsonNode body = http.get()
+                .uri("/api/remote-jobs?category=software-dev")
+                .retrieve()
+                .body(JsonNode.class);
+        return parse(body);
     }
 
     static List<JobPosting> parse(JsonNode body) {

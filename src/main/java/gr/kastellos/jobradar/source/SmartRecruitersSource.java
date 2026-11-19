@@ -44,7 +44,12 @@ public class SmartRecruitersSource implements JobSource {
                         .uri("/v1/companies/{company}/postings?limit=100", company)
                         .retrieve()
                         .body(JsonNode.class);
-                all.addAll(parse(company, body));
+                List<JobPosting> jobs = parse(company, body);
+                if (jobs.isEmpty()) {
+                    // SmartRecruiters answers 200 with an empty list even for an id that does not exist.
+                    log.warn("SmartRecruiters company '{}' has no jobs: check the id, or it has no openings now", company);
+                }
+                all.addAll(jobs);
             } catch (RuntimeException e) {
                 log.warn("SmartRecruiters company '{}' failed: {}", company, e.getMessage());
             }

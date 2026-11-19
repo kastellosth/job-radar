@@ -79,6 +79,10 @@ Find the company's careers page and copy its slug into `application.yml`:
 | `boards.greenhouse.io/<token>` | `radar.sources.greenhouse` |
 | `jobs.lever.co/<slug>` | `radar.sources.lever` |
 
+The current list is 15 companies with software jobs in Greece (European Dynamics, Qualco, Agile Actors, Uni Systems, LearnWorlds, Kaizen Gaming and others), each checked against its live API. A wrong Workable, Greenhouse or Lever slug fails with `404` and is logged. SmartRecruiters answers an unknown id with an empty list, so a company with no jobs is logged as a warning instead.
+
+Remotive is read once per run (`radar.sources.remotive: true`): its free API returns the same short list whatever the search term, and its terms ask for at most four calls a day and a visible link back, which the dashboard shows as "via Remotive".
+
 LinkedIn, Glassdoor and similar sites are deliberately not scraped: their terms forbid it. Only public, documented job-board feeds are used.
 
 ## Tests
@@ -94,6 +98,7 @@ Unit tests:
 - `JobScorerTest`: scoring rules, word boundaries (`java` ≠ `javascript`, `node.js` and `c#` still match), location filter, experience parsing in English and Greek, bucket thresholds.
 - `JobPostingTest`: deduplication across boards, Greek accents, remote jobs.
 - `SourceParsingTest`: each provider mapped from a saved sample response, no network.
+- `SourceFetchTest`: what the sources request, against a fake HTTP server: Remotive is called exactly once (or not at all when switched off), and a SmartRecruiters company with no jobs logs a warning.
 - `ApiKeyFilterTest`, `ApiKeyFilterWithoutKeyTest`: POST/PATCH without or with a wrong key get `401` and never reach the service, the right key passes, GET needs no key, and a server without `API_KEY` refuses every write.
 - `IngestServiceTest`: duplicates stored once, status survives a refresh, one broken source doesn't stop the run.
 

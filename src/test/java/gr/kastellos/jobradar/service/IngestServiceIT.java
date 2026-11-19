@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "radar.sources.smartrecruiters=",
                 "radar.sources.greenhouse=",
                 "radar.sources.lever=",
-                "radar.sources.remotive-searches="
+                "radar.sources.remotive=false"
         })
 @Import({PostgresContainerConfig.class, IngestServiceIT.Stubs.class})
 class IngestServiceIT {
