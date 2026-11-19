@@ -72,8 +72,25 @@ async function load() {
   `).join("");
 }
 
+// Writes need the API key. Ask once, keep it in this browser, ask again if the server says it is wrong.
+async function write(url, options = {}) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let key = localStorage.getItem("apiKey");
+    if (!key || attempt > 0) {
+      key = prompt("API key:");
+      if (!key) { statusEl.textContent = "Cancelled"; return null; }
+      localStorage.setItem("apiKey", key);
+    }
+    const res = await fetch(url, { ...options, headers: { ...options.headers, "X-Api-Key": key } });
+    if (res.status !== 401) return res;
+    localStorage.removeItem("apiKey");
+  }
+  statusEl.textContent = "Wrong API key";
+  return null;
+}
+
 async function setStatus(id, status) {
-  await fetch(`/api/jobs/${id}/status`, {
+  await write(`/api/jobs/${id}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status })
@@ -83,7 +100,9 @@ async function setStatus(id, status) {
 
 document.getElementById("refresh").onclick = async () => {
   statusEl.textContent = "Fetching…";
-  const r = await (await fetch("/api/ingest", { method: "POST" })).json();
+  const res = await write("/api/ingest", { method: "POST" });
+  if (!res) return;
+  const r = await res.json();
   statusEl.textContent = `Fetched ${r.fetched}, ${r.inserted} new, ${r.updated} updated`;
   load();
 };
