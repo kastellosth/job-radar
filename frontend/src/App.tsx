@@ -11,8 +11,9 @@ import {
   type JobStatus,
 } from './api'
 import { CompaniesPanel } from './components/CompaniesPanel'
-import { ALL_SOURCES, Filters } from './components/Filters'
+import { Filters } from './components/Filters'
 import { JobCard } from './components/JobCard'
+import { DEFAULT_VIEW, companiesIn, visibleJobs, type ViewOptions } from './jobView'
 
 const LABELS: Record<Bucket, string> = { STRONG: 'Strong match', GOOD: 'Good match', STRETCH: 'Stretch' }
 const DEFAULT_STATUSES: JobStatus[] = ['NEW', 'SEEN', 'APPLIED']
@@ -38,7 +39,7 @@ function saveKey(key: string) {
 
 export default function App() {
   const [statuses, setStatuses] = useState<JobStatus[]>(DEFAULT_STATUSES)
-  const [source, setSource] = useState(ALL_SOURCES)
+  const [view, setView] = useState<ViewOptions>(DEFAULT_VIEW)
   const [loaded, setLoaded] = useState<GroupedJobs>(NO_JOBS)
   const [apiKey, setApiKey] = useState(readKey)
   const [message, setMessage] = useState('')
@@ -64,10 +65,7 @@ export default function App() {
     }
   }, [statuses, noneTicked, reloads])
 
-  const sources = useMemo(
-    () => [...new Set(BUCKETS.flatMap((b) => jobs[b].map((j) => j.source)))].sort(),
-    [jobs],
-  )
+  const companies = useMemo(() => companiesIn(jobs), [jobs])
 
   async function changeStatus(job: Job, status: JobStatus) {
     try {
@@ -76,6 +74,22 @@ export default function App() {
     } catch (e) {
       setMessage(errorText(e))
     }
+  }
+
+  /**
+   * Opening a NEW job marks it SEEN, so NEW keeps meaning "not read yet". The card changes at once;
+   * the request runs in the background. Without a key there is nothing to send, so nothing happens.
+   */
+  function markOpened(job: Job) {
+    if (job.status !== 'NEW' || !apiKey) return
+    setLoaded((current) => ({
+      ...current,
+      [job.bucket]: current[job.bucket].map((j) => (j.id === job.id ? { ...j, status: 'SEEN' as const } : j)),
+    }))
+    updateStatus(job.id, 'SEEN', apiKey).catch((e: unknown) => {
+      setMessage(errorText(e))
+      reload()
+    })
   }
 
   async function fetchNow() {
@@ -120,13 +134,13 @@ export default function App() {
         <Filters
           statuses={statuses}
           onStatusesChange={setStatuses}
-          sources={sources}
-          source={source}
-          onSourceChange={setSource}
+          view={view}
+          onViewChange={setView}
+          companies={companies}
         />
         <CompaniesPanel apiKey={apiKey} />
         {BUCKETS.map((bucket) => {
-          const shown = jobs[bucket].filter((j) => source === ALL_SOURCES || j.source === source)
+          const shown = visibleJobs(jobs[bucket], view)
           return (
             <section key={bucket} aria-label={LABELS[bucket]}>
               <h2>
@@ -135,7 +149,9 @@ export default function App() {
               {shown.length === 0 ? (
                 <p className="empty">Nothing here yet.</p>
               ) : (
-                shown.map((job) => <JobCard key={job.id} job={job} onStatus={changeStatus} />)
+                shown.map((job) => (
+                  <JobCard key={job.id} job={job} onStatus={changeStatus} onOpen={markOpened} />
+                ))
               )}
             </section>
           )

@@ -18,6 +18,7 @@ main { max-width: 960px; margin: 0 auto; padding: 16px 24px 48px; }
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .filters fieldset { border: 1px solid var(--line); border-radius: 6px; display: flex; flex-wrap: wrap; gap: 10px; }
 .filters select { font: inherit; padding: 4px; }
+.filters .search { font: inherit; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; flex: 1 1 220px; min-width: 0; }
 h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 28px 0 8px; }
 .job { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 8px 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
 .job.NEW { border-left: 4px solid var(--teal); }

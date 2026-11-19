@@ -18,7 +18,7 @@ Remotive ────────┘
 - **Deduplication**: the same job is often posted on several boards or reposted with a new id. Company + title + location, lower-cased with accents and punctuation removed, is its identity.
 - **Scoring** (`matching/JobScorer`): pure and deterministic. Only software jobs count: a title without a role word (developer, engineer, software, QA, DevOps, προγραμματιστής…) is skipped before any points, so "Junior Talent Acquisition Specialist" cannot ride on its "junior" boost. Then points for skills found anywhere, extra points for title words like "junior", penalties for "senior"/"lead", and −2 per year of required experience above 2. Every point is stored as a readable reason (`+3 java, +4 title:junior, -2 asks for 3+ years`) and shown next to the job.
 - **Status**: NEW → SEEN / APPLIED / REJECTED / HIDDEN. When a job shows up again its score is refreshed but my status is kept.
-- **Dashboard** (`frontend/`): React + TypeScript, built by Vite. Jobs grouped by bucket, filters by status and source, status buttons and **Fetch now**. Maven builds it into the jar, so Spring Boot serves the page and the API from one place (no CORS, one deploy).
+- **Dashboard** (`frontend/`): React + TypeScript, built by Vite. Jobs grouped by bucket; search by title or company (accents and capitals ignored, so `προγραμματιστης` finds `Προγραμματιστής`); filter by company and status; sort by best match or newest; each card says when the job was posted. Opening a NEW job marks it SEEN, so NEW always means "not read yet". Status buttons and **Fetch now**. Maven builds it into the jar, so Spring Boot serves the page and the API from one place (no CORS, one deploy).
 
 All weights, thresholds, accepted cities and role words live in `application.yml`, so tuning the matcher needs no code change. Which companies to read is data, changed in the dashboard (see [Add a company](#add-a-company)).
 
@@ -117,9 +117,10 @@ Unit tests:
 
 Dashboard tests (Vitest + Testing Library, with `fetch` replaced by a fake server):
 
-- `App.test.tsx`: jobs grouped by bucket; ticked statuses become the API query (none ticked: no request); the source filter works in the page without a new request; status buttons and **Fetch now** send the API key and reload; a `401` points at the key field.
+- `App.test.tsx`: jobs grouped by bucket; ticked statuses become the API query (none ticked: no request); company filter and search work in the page without a new request; opening a NEW job marks it SEEN at once and sends the key, while a job that is not NEW, or a missing key, sends nothing; status buttons and **Fetch now** send the API key and reload; a `401` points at the key field.
+- `jobView.test.ts`: search (every word, title or company, no accents), company filter, newest-first sorting with first-seen as fallback, company counts, and "3 days ago" dates.
 - `CompaniesPanel.test.tsx`: lists the companies; adding and removing send the API key and reload the list; a refused link shows the server's reason and keeps the text.
-- `JobCard.test.tsx`: only `http(s)` addresses become links (never `javascript:`), and the button for the current status is disabled.
+- `JobCard.test.tsx`: only `http(s)` addresses become links (never `javascript:`), the button for the current status is disabled, "posted"/"found" dates, and opening the link is reported.
 
 Integration tests (Testcontainers starts a throw-away `postgres:16-alpine`; the Flyway migrations build the schema):
 

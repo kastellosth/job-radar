@@ -26,7 +26,9 @@ function job(overrides: Partial<Job>): Job {
 
 const JOBS: GroupedJobs = {
   STRONG: [job({ id: 1 })],
-  GOOD: [job({ id: 2, title: 'Backend Developer', score: 6, bucket: 'GOOD', source: 'remotive', remote: true })],
+  GOOD: [
+    job({ id: 2, title: 'Backend Developer', company: 'Remote Co', score: 6, bucket: 'GOOD', source: 'remotive', remote: true }),
+  ],
   STRETCH: [],
 }
 
@@ -86,15 +88,22 @@ describe('App', () => {
     expect(gets(calls).at(-1)?.url).not.toBe('/api/jobs?status=')
   })
 
-  it('filters by source in the page, without calling the API again', async () => {
+  it('filters by company and by search text in the page, without calling the API again', async () => {
     const calls = fakeApi({ 'GET /api/jobs': () => json(JOBS) })
     render(<App />)
     await screen.findByRole('article', { name: 'Junior Java Developer' })
 
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /source/i }), 'remotive')
-
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /company/i }), 'Remote Co')
     expect(screen.queryByRole('article', { name: 'Junior Java Developer' })).not.toBeInTheDocument()
     expect(screen.getByRole('article', { name: 'Backend Developer' })).toBeInTheDocument()
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /company/i }), '')
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search' }), 'junior')
+    expect(screen.getByRole('article', { name: 'Junior Java Developer' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Backend Developer' })).not.toBeInTheDocument()
+    expect(within(section('Strong match')).getByRole('heading')).toHaveTextContent('Strong match (1)')
+    expect(within(section('Good match')).getByRole('heading')).toHaveTextContent('Good match (0)')
+
     expect(gets(calls)).toHaveLength(1)
   })
 
@@ -145,5 +154,54 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('Missing or wrong API key: enter it at the top.'),
     )
+  })
+
+  it('marks a NEW job SEEN when its link is opened, without waiting for the server', async () => {
+    const calls = fakeApi({
+      'GET /api/jobs': () => json(JOBS),
+      'PATCH /api/jobs/1/status': () => json(job({ status: 'SEEN' })),
+    })
+    localStorage.setItem('jobRadar.apiKey', 's3cret')
+    render(<App />)
+    const card = await screen.findByRole('article', { name: 'Junior Java Developer' })
+    expect(within(card).getByText('NEW')).toBeInTheDocument()
+
+    const link = within(card).getByRole('link', { name: 'Junior Java Developer' })
+    link.addEventListener('click', (e) => e.preventDefault()) // jsdom cannot open tabs
+    await userEvent.click(link)
+
+    expect(within(card).queryByText('NEW')).not.toBeInTheDocument()
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.init?.body).toBe('{"status":"SEEN"}'))
+    expect(calls.find((c) => c.method === 'PATCH')?.init?.headers).toMatchObject({ 'X-Api-Key': 's3cret' })
+  })
+
+  const openLink = async (name: string) => {
+    const link = screen.getByRole('link', { name })
+    link.addEventListener('click', (e) => e.preventDefault()) // jsdom cannot open tabs
+    await userEvent.click(link)
+  }
+
+  it('sends nothing when a job that is not NEW is opened', async () => {
+    const calls = fakeApi({
+      'GET /api/jobs': () => json({ ...JOBS, STRONG: [job({ id: 3, title: 'Seen Job', status: 'SEEN' })] }),
+    })
+    localStorage.setItem('jobRadar.apiKey', 's3cret')
+    render(<App />)
+    await screen.findByRole('article', { name: 'Seen Job' })
+
+    await openLink('Seen Job')
+
+    expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(0)
+  })
+
+  it('sends nothing and keeps the job NEW when there is no API key', async () => {
+    const calls = fakeApi({ 'GET /api/jobs': () => json(JOBS) })
+    render(<App />)
+    const card = await screen.findByRole('article', { name: 'Junior Java Developer' })
+
+    await openLink('Junior Java Developer')
+
+    expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(0)
+    expect(within(card).getByText('NEW')).toBeInTheDocument()
   })
 })

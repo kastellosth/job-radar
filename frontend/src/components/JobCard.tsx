@@ -1,4 +1,5 @@
 import type { Job, JobStatus } from '../api'
+import { jobDate, timeAgo } from '../jobView'
 import { safeUrl } from '../safeUrl'
 
 const ACTIONS: JobStatus[] = ['SEEN', 'APPLIED', 'REJECTED', 'HIDDEN']
@@ -14,14 +15,23 @@ const SOURCE_NAMES: Record<string, string> = {
 interface Props {
   job: Job
   onStatus: (job: Job, status: JobStatus) => void
+  /** Called when the job's link is opened (click, middle click or Enter). */
+  onOpen: (job: Job) => void
 }
 
-export function JobCard({ job, onStatus }: Props) {
+export function JobCard({ job, onStatus, onOpen }: Props) {
   const where = job.remote ? 'Remote' : (job.location ?? '')
+  const when = `${job.postedAt ? 'posted' : 'found'} ${timeAgo(jobDate(job))}`
   return (
     <article className={`job ${job.status}`} aria-label={job.title}>
       <div className="title">
-        <a href={safeUrl(job.url)} target="_blank" rel="noopener noreferrer">
+        <a
+          href={safeUrl(job.url)}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => onOpen(job)}
+          onAuxClick={() => onOpen(job)}
+        >
           {job.title}
         </a>
         {job.status !== 'SEEN' && <span className="pill">{job.status}</span>}
@@ -31,7 +41,8 @@ export function JobCard({ job, onStatus }: Props) {
       </div>
       {/* Remotive's terms ask to name them as the source and link to their job page. */}
       <div className="meta">
-        {job.company} · {where} · via {SOURCE_NAMES[job.source] ?? job.source}
+        {job.company} · {where} · via {SOURCE_NAMES[job.source] ?? job.source} ·{' '}
+        <time dateTime={jobDate(job)}>{when}</time>
       </div>
       {job.reasons && <div className="reasons">{job.reasons}</div>}
       <div className="actions">

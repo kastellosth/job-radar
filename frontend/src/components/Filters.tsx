@@ -1,23 +1,54 @@
 import { STATUSES, type JobStatus } from '../api'
-
-export const ALL_SOURCES = ''
+import { ALL, type CompanyCount, type SortOrder, type ViewOptions } from '../jobView'
 
 interface Props {
   statuses: readonly JobStatus[]
   onStatusesChange: (statuses: JobStatus[]) => void
-  sources: readonly string[]
-  source: string
-  onSourceChange: (source: string) => void
+  view: ViewOptions
+  onViewChange: (view: ViewOptions) => void
+  companies: readonly CompanyCount[]
 }
 
-export function Filters({ statuses, onStatusesChange, sources, source, onSourceChange }: Props) {
+export function Filters({ statuses, onStatusesChange, view, onViewChange, companies }: Props) {
   function toggle(status: JobStatus, checked: boolean) {
     // Keep the fixed STATUSES order, so the request URL does not depend on click order.
     onStatusesChange(STATUSES.filter((s) => (s === status ? checked : statuses.includes(s))))
   }
 
+  // A chosen company stays in the list even when a status change leaves it with no jobs.
+  const options =
+    view.company === ALL || companies.some((c) => c.name === view.company)
+      ? companies
+      : [...companies, { name: view.company, count: 0 }]
+
   return (
     <div className="filters">
+      <input
+        type="search"
+        className="search"
+        placeholder="Search title or company"
+        aria-label="Search"
+        value={view.query}
+        onChange={(e) => onViewChange({ ...view, query: e.target.value })}
+      />
+      <label>
+        Company{' '}
+        <select value={view.company} onChange={(e) => onViewChange({ ...view, company: e.target.value })}>
+          <option value={ALL}>all companies</option>
+          {options.map((c) => (
+            <option key={c.name} value={c.name}>
+              {c.name} ({c.count})
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Sort{' '}
+        <select value={view.sort} onChange={(e) => onViewChange({ ...view, sort: e.target.value as SortOrder })}>
+          <option value="best">best match</option>
+          <option value="newest">newest</option>
+        </select>
+      </label>
       <fieldset>
         <legend>Status</legend>
         {STATUSES.map((status) => (
@@ -31,17 +62,6 @@ export function Filters({ statuses, onStatusesChange, sources, source, onSourceC
           </label>
         ))}
       </fieldset>
-      <label>
-        Source{' '}
-        <select value={source} onChange={(e) => onSourceChange(e.target.value)}>
-          <option value={ALL_SOURCES}>all sources</option>
-          {sources.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </label>
     </div>
   )
 }
