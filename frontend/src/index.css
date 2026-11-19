@@ -1,0 +1,32 @@
+:root {
+  --teal: #119c8f;
+  --ink: #1d2327;
+  --muted: #6b7378;
+  --line: #e3e7e9;
+  --bg: #f7f9fa;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 24px; background: #fff; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 1; }
+h1 { font-size: 18px; margin: 0; color: var(--teal); }
+header .spacer { flex: 1; }
+header input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; width: 12em; }
+button { font: inherit; border: 1px solid var(--line); background: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { background: var(--teal); color: #fff; border-color: var(--teal); }
+main { max-width: 960px; margin: 0 auto; padding: 16px 24px 48px; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.filters fieldset { border: 1px solid var(--line); border-radius: 6px; display: flex; flex-wrap: wrap; gap: 10px; }
+.filters select { font: inherit; padding: 4px; }
+h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 28px 0 8px; }
+.job { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 8px 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
+.job.NEW { border-left: 4px solid var(--teal); }
+.title a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.title a:hover { text-decoration: underline; }
+.meta, .reasons { grid-column: 1; color: var(--muted); font-size: 13px; }
+.score { font-weight: 700; color: var(--teal); text-align: right; }
+.actions { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+.actions button { font-size: 12px; padding: 3px 8px; }
+.pill { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: #eef6f5; color: var(--teal); margin-left: 6px; }
+.empty { color: var(--muted); font-style: italic; }
+.message { color: var(--muted); font-size: 13px; }

@@ -1,0 +1,149 @@
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import App from './App'
+import type { GroupedJobs, Job } from './api'
+
+function job(overrides: Partial<Job>): Job {
+  return {
+    id: 1,
+    source: 'workable',
+    company: 'Acme',
+    title: 'Junior Java Developer',
+    location: 'Athens, Greece',
+    remote: false,
+    url: 'https://example.com/1',
+    postedAt: null,
+    score: 10,
+    bucket: 'STRONG',
+    reasons: '+3 java, +4 title:junior',
+    status: 'NEW',
+    firstSeenAt: '2026-11-18T08:00:00Z',
+    lastSeenAt: '2026-11-18T08:00:00Z',
+    ...overrides,
+  }
+}
+
+const JOBS: GroupedJobs = {
+  STRONG: [job({ id: 1 })],
+  GOOD: [job({ id: 2, title: 'Backend Developer', score: 6, bucket: 'GOOD', source: 'remotive', remote: true })],
+  STRETCH: [],
+}
+
+interface Call {
+  method: string
+  url: string
+  init?: RequestInit
+}
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+/** A fake server: records every request and answers by "METHOD /path". */
+function fakeApi(handlers: Record<string, () => Response>): Call[] {
+  const calls: Call[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET'
+      calls.push({ method, url, init })
+      const handler = handlers[`${method} ${url.split('?')[0]}`]
+      return handler ? handler() : json({ status: 404 }, 404)
+    }),
+  )
+  return calls
+}
+
+const gets = (calls: Call[]) => calls.filter((c) => c.method === 'GET')
+const section = (name: string) => screen.getByRole('region', { name })
+
+describe('App', () => {
+  it('shows the jobs grouped by bucket, best groups first', async () => {
+    fakeApi({ 'GET /api/jobs': () => json(JOBS) })
+
+    render(<App />)
+
+    expect(await screen.findByRole('article', { name: 'Junior Java Developer' })).toBeInTheDocument()
+    expect(within(section('Strong match')).getByRole('heading')).toHaveTextContent('Strong match (1)')
+    expect(within(section('Good match')).getByText(/Remote · via Remotive/)).toBeInTheDocument()
+    expect(within(section('Stretch')).getByText('Nothing here yet.')).toBeInTheDocument()
+  })
+
+  it('asks the API for the statuses that are ticked, and asks nothing when none is', async () => {
+    const calls = fakeApi({ 'GET /api/jobs': () => json(JOBS) })
+    render(<App />)
+    await screen.findByRole('article', { name: 'Junior Java Developer' })
+    expect(gets(calls)[0].url).toBe('/api/jobs?status=NEW,SEEN,APPLIED')
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'rejected' }))
+    await waitFor(() => expect(gets(calls)).toHaveLength(2))
+    expect(gets(calls)[1].url).toBe('/api/jobs?status=NEW,SEEN,APPLIED,REJECTED')
+
+    for (const name of ['new', 'seen', 'applied', 'rejected']) {
+      await userEvent.click(screen.getByRole('checkbox', { name }))
+    }
+    expect(screen.queryAllByRole('article')).toHaveLength(0)
+    expect(gets(calls).at(-1)?.url).not.toBe('/api/jobs?status=')
+  })
+
+  it('filters by source in the page, without calling the API again', async () => {
+    const calls = fakeApi({ 'GET /api/jobs': () => json(JOBS) })
+    render(<App />)
+    await screen.findByRole('article', { name: 'Junior Java Developer' })
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /source/i }), 'remotive')
+
+    expect(screen.queryByRole('article', { name: 'Junior Java Developer' })).not.toBeInTheDocument()
+    expect(screen.getByRole('article', { name: 'Backend Developer' })).toBeInTheDocument()
+    expect(gets(calls)).toHaveLength(1)
+  })
+
+  it('sends a status change with the API key, remembers the key, and reloads the list', async () => {
+    const calls = fakeApi({
+      'GET /api/jobs': () => json(JOBS),
+      'PATCH /api/jobs/1/status': () => json(job({ status: 'APPLIED' })),
+    })
+    render(<App />)
+    const card = await screen.findByRole('article', { name: 'Junior Java Developer' })
+
+    await userEvent.type(screen.getByLabelText('API key'), 's3cret')
+    await userEvent.click(within(card).getByRole('button', { name: 'applied' }))
+
+    await waitFor(() => expect(gets(calls)).toHaveLength(2))
+    const patch = calls.find((c) => c.method === 'PATCH')
+    expect(patch?.init?.headers).toMatchObject({ 'X-Api-Key': 's3cret' })
+    expect(patch?.init?.body).toBe('{"status":"APPLIED"}')
+    expect(localStorage.getItem('jobRadar.apiKey')).toBe('s3cret')
+  })
+
+  it('runs an ingest on "Fetch now" and reports what it found', async () => {
+    const calls = fakeApi({
+      'GET /api/jobs': () => json(JOBS),
+      'POST /api/ingest': () => json({ fetched: 189, unique: 154, inserted: 3, updated: 151 }),
+    })
+    localStorage.setItem('jobRadar.apiKey', 's3cret')
+    render(<App />)
+    await screen.findByRole('article', { name: 'Junior Java Developer' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch now' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Fetched 189, 3 new, 151 updated')
+    expect(calls.find((c) => c.method === 'POST')?.init?.headers).toMatchObject({ 'X-Api-Key': 's3cret' })
+    await waitFor(() => expect(gets(calls)).toHaveLength(2))
+  })
+
+  it('points at the API key field when the server answers 401', async () => {
+    fakeApi({
+      'GET /api/jobs': () => json(JOBS),
+      'POST /api/ingest': () => json({ status: 401 }, 401),
+    })
+    render(<App />)
+    await screen.findByRole('article', { name: 'Junior Java Developer' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch now' }))
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Missing or wrong API key: enter it at the top.'),
+    )
+  })
+})

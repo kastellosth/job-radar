@@ -1,10 +1,12 @@
 # Tests are not run here: the integration tests need Docker themselves. CI runs `./mvnw verify` before a deploy.
-FROM eclipse-temurin:21-jdk-alpine AS build
+# Not Alpine for the build: the Node that Maven downloads for the frontend needs glibc.
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /src
 # Dependencies first, so a code change does not download them all again.
 COPY pom.xml mvnw ./
 COPY .mvn .mvn
 RUN sh mvnw -B -q dependency:go-offline
+COPY frontend frontend
 COPY src src
 RUN sh mvnw -B -q package -DskipTests
 RUN java -Djarmode=tools -jar target/job-radar.jar extract --layers --destination /layers

@@ -3,3 +3,6 @@
 !mvnw
 !.mvn
 !src
+!frontend
+frontend/node_modules
+frontend/dist

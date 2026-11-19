@@ -2,7 +2,7 @@
 
 Collects job postings from public job-board APIs, scores each one against my profile, and groups them into **Strong match / Good match / Stretch** so I only read the ones worth applying to.
 
-Java 21 · Spring Boot · PostgreSQL · Flyway · JUnit · Mockito · Docker · GitHub Actions
+Java 21 · Spring Boot · PostgreSQL · Flyway · React + TypeScript (Vite) · JUnit · Mockito · Testcontainers · Vitest · Docker · GitHub Actions
 
 ## How it works
 
@@ -18,6 +18,7 @@ Remotive ────────┘
 - **Deduplication**: the same job is often posted on several boards or reposted with a new id. Company + title + location, lower-cased with accents and punctuation removed, is its identity.
 - **Scoring** (`matching/JobScorer`): pure and deterministic. Points for skills found anywhere, extra points for title words like "junior", penalties for "senior"/"lead", and −2 per year of required experience above 2. Every point is stored as a readable reason (`+3 java, +4 title:junior, -2 asks for 3+ years`) and shown next to the job.
 - **Status**: NEW → SEEN / APPLIED / REJECTED / HIDDEN. When a job shows up again its score is refreshed but my status is kept.
+- **Dashboard** (`frontend/`): React + TypeScript, built by Vite. Jobs grouped by bucket, filters by status and source, status buttons and **Fetch now**. Maven builds it into the jar, so Spring Boot serves the page and the API from one place (no CORS, one deploy).
 
 All weights, thresholds, accepted cities and company slugs live in `application.yml`, so tuning the matcher needs no code change.
 
@@ -28,7 +29,7 @@ docker compose up -d                      # PostgreSQL on :5432
 API_KEY=change-me ./mvnw spring-boot:run  # app on :8080, Flyway creates the schema
 ```
 
-Open http://localhost:8080 and press **Fetch new jobs now** (it asks for the API key once), or:
+The first Maven build downloads Node and builds the dashboard (about a minute). Open http://localhost:8080, type the API key at the top, and press **Fetch now**, or:
 
 ```bash
 curl localhost:8080/api/jobs
@@ -36,11 +37,19 @@ curl -X POST localhost:8080/api/ingest -H 'X-Api-Key: change-me'
 curl -X PATCH localhost:8080/api/jobs/42/status -H 'X-Api-Key: change-me' -H 'Content-Type: application/json' -d '{"status":"APPLIED"}'
 ```
 
+To work on the dashboard with instant reload, keep the app running and start Vite next to it; it forwards `/api` to :8080:
+
+```bash
+cd frontend
+npm install
+npm run dev                               # http://localhost:5173
+```
+
 **API key.** Reading jobs is open; every POST and PATCH under `/api` needs the `X-Api-Key` header to equal the `API_KEY` environment variable. Without it the answer is `401` with a JSON problem detail. If `API_KEY` is not set, all writes are refused. It is a plain servlet filter (`web/ApiKeyFilter`), not Spring Security: one shared secret for one user needs no users, sessions or login page.
 
 ### As a Docker image
 
-The `Dockerfile` builds the jar with Maven, then copies it into a small JRE 21 image that runs as a non-root user.
+The `Dockerfile` builds the jar (and the dashboard inside it) with Maven, then copies it into a small JRE 21 image that runs as a non-root user.
 
 ```bash
 docker build -t job-radar .
@@ -75,8 +84,9 @@ LinkedIn, Glassdoor and similar sites are deliberately not scraped: their terms 
 ## Tests
 
 ```bash
-./mvnw test      # unit tests only: fast, no Docker
+./mvnw test      # Java unit tests and the dashboard tests: no Docker
 ./mvnw verify    # also the *IT integration tests: needs Docker running
+cd frontend && npm test   # only the dashboard tests
 ```
 
 Unit tests:
@@ -87,6 +97,11 @@ Unit tests:
 - `ApiKeyFilterTest`, `ApiKeyFilterWithoutKeyTest`: POST/PATCH without or with a wrong key get `401` and never reach the service, the right key passes, GET needs no key, and a server without `API_KEY` refuses every write.
 - `IngestServiceTest`: duplicates stored once, status survives a refresh, one broken source doesn't stop the run.
 
+Dashboard tests (Vitest + Testing Library, with `fetch` replaced by a fake server):
+
+- `App.test.tsx`: jobs grouped by bucket; ticked statuses become the API query (none ticked: no request); the source filter works in the page without a new request; status buttons and **Fetch now** send the API key and reload; a `401` points at the key field.
+- `JobCard.test.tsx`: only `http(s)` addresses become links (never `javascript:`), and the button for the current status is disabled.
+
 Integration tests (Testcontainers starts a throw-away `postgres:16-alpine`; the Flyway migrations build the schema):
 
 - `JobRepositoryIT`: lookup by fingerprint, the UNIQUE constraint rejects a duplicate, the dashboard query hides SKIP/HIDDEN jobs and sorts best first.
@@ -94,7 +109,7 @@ Integration tests (Testcontainers starts a throw-away `postgres:16-alpine`; the 
 
 ## Roadmap
 
-- [ ] React + TypeScript dashboard (replace `static/index.html`)
+- [x] React + TypeScript dashboard (replace `static/index.html`)
 - [x] Testcontainers integration test for the repository and the full ingest
 - [ ] Fetch full SmartRecruiters job descriptions for promising titles
 - [ ] Weekly email digest of new STRONG matches
