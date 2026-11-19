@@ -6,6 +6,7 @@ import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.MatchResult;
 import org.springframework.stereotype.Component;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -17,7 +18,8 @@ import java.util.regex.Pattern;
  * Pure, deterministic scoring: same posting + same profile = same score.
  * No Spring or I/O in the logic, so it is cheap to unit-test.
  *
- * Score = skill keywords found + title boosts + penalties + experience penalty.
+ * A job outside the accepted locations, or whose title is not a software role, is skipped with 0 points.
+ * Otherwise: score = skill keywords found + title boosts + penalties + experience penalty.
  * Every point is recorded as a human-readable reason, so the UI can show why a job ranked where it did.
  */
 @Component
@@ -41,6 +43,11 @@ public class JobScorer {
 
         if (!locationAccepted(posting)) {
             reasons.add("location not accepted: " + posting.location());
+            return new MatchResult(0, Bucket.SKIP, reasons);
+        }
+        // Checked before any points: "Junior Talent Acquisition Specialist" must not ride on its "junior" boost.
+        if (!softwareRole(title)) {
+            reasons.add("not a software role");
             return new MatchResult(0, Bucket.SKIP, reasons);
         }
 
@@ -69,6 +76,20 @@ public class JobScorer {
             return true; // unknown: let him decide rather than silently drop it
         }
         return profile.locations().stream().map(JobScorer::lower).anyMatch(location::contains);
+    }
+
+    /** Accents are ignored here: Greek titles in capitals ("ΠΡΟΓΡΑΜΜΑΤΙΣΤΗΣ") carry none. */
+    private boolean softwareRole(String title) {
+        if (profile.roleKeywords().isEmpty()) {
+            return true;
+        }
+        String plainTitle = withoutAccents(title);
+        return profile.roleKeywords().stream()
+                .anyMatch(keyword -> containsWord(plainTitle, withoutAccents(lower(keyword))));
+    }
+
+    private static String withoutAccents(String s) {
+        return Normalizer.normalize(s, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
     }
 
     private static int addMatches(Map<String, Integer> weights, String text, String prefix, List<String> reasons) {

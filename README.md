@@ -16,7 +16,7 @@ Remotive ────────┘
 
 - **Sources** (`source/`): one class per provider. Each only fetches and maps JSON into a common `JobPosting`. A failing company or provider is logged and skipped; it never stops the others.
 - **Deduplication**: the same job is often posted on several boards or reposted with a new id. Company + title + location, lower-cased with accents and punctuation removed, is its identity.
-- **Scoring** (`matching/JobScorer`): pure and deterministic. Points for skills found anywhere, extra points for title words like "junior", penalties for "senior"/"lead", and −2 per year of required experience above 2. Every point is stored as a readable reason (`+3 java, +4 title:junior, -2 asks for 3+ years`) and shown next to the job.
+- **Scoring** (`matching/JobScorer`): pure and deterministic. Only software jobs count: a title without a role word (developer, engineer, software, QA, DevOps, προγραμματιστής…) is skipped before any points, so "Junior Talent Acquisition Specialist" cannot ride on its "junior" boost. Then points for skills found anywhere, extra points for title words like "junior", penalties for "senior"/"lead", and −2 per year of required experience above 2. Every point is stored as a readable reason (`+3 java, +4 title:junior, -2 asks for 3+ years`) and shown next to the job.
 - **Status**: NEW → SEEN / APPLIED / REJECTED / HIDDEN. When a job shows up again its score is refreshed but my status is kept.
 - **Dashboard** (`frontend/`): React + TypeScript, built by Vite. Jobs grouped by bucket, filters by status and source, status buttons and **Fetch now**. Maven builds it into the jar, so Spring Boot serves the page and the API from one place (no CORS, one deploy).
 
@@ -95,7 +95,7 @@ cd frontend && npm test   # only the dashboard tests
 
 Unit tests:
 
-- `JobScorerTest`: scoring rules, word boundaries (`java` ≠ `javascript`, `node.js` and `c#` still match), location filter, experience parsing in English and Greek, bucket thresholds.
+- `JobScorerTest`: the software-role filter (in English and Greek, also in capitals without accents), scoring rules, word boundaries (`java` ≠ `javascript`, `node.js` and `c#` still match), location filter, experience parsing in English and Greek, bucket thresholds.
 - `JobPostingTest`: deduplication across boards, Greek accents, remote jobs.
 - `SourceParsingTest`: each provider mapped from a saved sample response, no network.
 - `SourceFetchTest`: what the sources request, against a fake HTTP server: Remotive is called exactly once (or not at all when switched off), and a SmartRecruiters company with no jobs logs a warning.

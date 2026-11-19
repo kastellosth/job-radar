@@ -108,6 +108,28 @@ radar:
       - crete
       - marousi
       - piraeus
+    # Only software jobs: a title must contain one of these words, or the job is skipped. Empty list = no filter.
+    role-keywords:
+      - developer
+      - developers
+      - engineer
+      - engineers
+      - software
+      - programmer
+      - tester
+      - qa
+      - devops
+      - sre
+      - backend
+      - back-end
+      - frontend
+      - front-end
+      - full stack
+      - full-stack
+      - fullstack
+      - προγραμματιστής
+      - προγραμματίστρια
+      - μηχανικός λογισμικού
     strong-threshold: 9
     good-threshold: 5
     stretch-threshold: 2

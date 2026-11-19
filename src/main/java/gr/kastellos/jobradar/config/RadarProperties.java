@@ -39,6 +39,7 @@ public record RadarProperties(Sources sources, Profile profile) {
      * @param titleBoosts     keyword -> points when it appears in the title (e.g. "junior")
      * @param penalties       keyword -> points (negative) when it appears, e.g. "senior", "5+ years"
      * @param locations       locations he accepts; a posting elsewhere (and not remote) is dropped
+     * @param roleKeywords    a title must contain one of these to count as a software job; empty = no filter
      * @param strongThreshold score at or above which a job is a strong match
      * @param goodThreshold   score at or above which a job is a good match; below that it is a stretch or skipped
      */
@@ -47,6 +48,7 @@ public record RadarProperties(Sources sources, Profile profile) {
             Map<String, Integer> titleBoosts,
             Map<String, Integer> penalties,
             List<String> locations,
+            List<String> roleKeywords,
             int strongThreshold,
             int goodThreshold,
             int stretchThreshold) {
@@ -56,6 +58,7 @@ public record RadarProperties(Sources sources, Profile profile) {
             titleBoosts = titleBoosts == null ? Map.of() : titleBoosts;
             penalties = penalties == null ? Map.of() : penalties;
             locations = orEmpty(locations);
+            roleKeywords = orEmpty(roleKeywords);
         }
     }
 

@@ -22,6 +22,7 @@ class JobScorerTest {
                     Map.of("junior", 4, "graduate", 4),
                     Map.of("senior", -8, "german", -6),
                     List.of("greece", "athens", "thessaloniki", "heraklion"),
+                    List.of("developer", "engineer", "προγραμματιστής"),
                     9, 5, 2)));
 
     private static JobPosting posting(String title, String location, boolean remote, String description) {
@@ -75,6 +76,39 @@ class JobScorerTest {
         MatchResult r = scorer.score(posting("Junior Java Developer", null, false, "Java"));
 
         assertThat(r.bucket()).isNotEqualTo(Bucket.SKIP);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'Junior Talent Acquisition Specialist'",
+            "'Business Development Associate'",
+            "'Head of Engineering'"
+    })
+    void titleThatIsNotASoftwareRoleIsSkippedWhateverTheDescriptionSays(String title) {
+        MatchResult r = scorer.score(posting(title, "Athens", false, "You will hire Java and Spring Boot people."));
+
+        assertThat(r.bucket()).isEqualTo(Bucket.SKIP);
+        assertThat(r.score()).isZero();
+        assertThat(r.reasons()).containsExactly("not a software role");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"'Junior Java Developer'", "'Software Engineer'", "'Προγραμματιστής Java'", "'ΠΡΟΓΡΑΜΜΑΤΙΣΤΗΣ JAVA'"})
+    void softwareTitlesAreScoredInEnglishAndGreek(String title) {
+        MatchResult r = scorer.score(posting(title, "Athens", false, "Java"));
+
+        assertThat(r.reasons()).doesNotContain("not a software role").contains("+3 java");
+    }
+
+    @Test
+    void anEmptyRoleListMeansEveryTitleIsScored() {
+        JobScorer noFilter = new JobScorer(new RadarProperties(
+                new RadarProperties.Sources(null, null, null, null, false),
+                new RadarProperties.Profile(Map.of("java", 3), null, null, null, null, 9, 5, 2)));
+
+        MatchResult r = noFilter.score(posting("Talent Acquisition Specialist", "Athens", false, "Java"));
+
+        assertThat(r.score()).isEqualTo(3);
     }
 
     @ParameterizedTest
