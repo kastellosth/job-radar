@@ -13,6 +13,10 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  mvc:
+    # Errors as RFC 9457 problem details, the same shape the API key filter returns.
+    problemdetails:
+      enabled: true
   flyway:
     enabled: true
 
@@ -23,32 +27,8 @@ radar:
   # Required in the X-Api-Key header for POST/PATCH. No default on purpose: without it, writes are refused.
   api-key: ${API_KEY:}
 
+  # Companies are added and removed in the dashboard (table tracked_company).
   sources:
-    # Workable: the slug after apply.workable.com/ on a company's careers page.
-    # Companies with software jobs in Greece, each checked against the live API on 2026-11-19.
-    workable:
-      - european-dynamics
-      - qualcogroup
-      - agileactors
-      - uni-systems
-      - learnworlds
-      - epignosis
-      - upstream
-      - welcomepickups
-      - adaptit
-      - performance-technologies
-      - stoiximan
-      - skroutz
-      - orfium
-      - deeplab
-    # SmartRecruiters: the id after careers.smartrecruiters.com/ or jobs.smartrecruiters.com/
-    smartrecruiters:
-      - NetcompanyIntrasoft  # a big employer, no openings on 2026-11-19
-    # Greenhouse board tokens (boards.greenhouse.io/<token>)
-    greenhouse:
-      - kaizengaming
-    # Lever company slugs (jobs.lever.co/<slug>)
-    lever: []
     # Remote software jobs open to Greece/Europe, one call per run
     remotive: true
 

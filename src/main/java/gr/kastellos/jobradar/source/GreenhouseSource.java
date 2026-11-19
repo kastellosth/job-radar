@@ -1,10 +1,9 @@
 package gr.kastellos.jobradar.source;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import gr.kastellos.jobradar.config.RadarProperties;
 import gr.kastellos.jobradar.domain.JobPosting;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import gr.kastellos.jobradar.domain.Provider;
+import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -17,38 +16,27 @@ import java.util.List;
  * The board token is the part after boards.greenhouse.io/ (or job-boards.greenhouse.io/) in a careers URL.
  */
 @Component
-public class GreenhouseSource implements JobSource {
-
-    private static final Logger log = LoggerFactory.getLogger(GreenhouseSource.class);
+public class GreenhouseSource extends CompanyBoardSource {
 
     private final RestClient http;
-    private final List<String> boards;
 
-    public GreenhouseSource(RestClient.Builder builder, RadarProperties props) {
+    public GreenhouseSource(RestClient.Builder builder, TrackedCompanyRepository companies) {
+        super(companies);
         this.http = builder.baseUrl("https://boards-api.greenhouse.io").build();
-        this.boards = props.sources().greenhouse();
     }
 
     @Override
-    public String name() {
-        return "greenhouse";
+    public Provider provider() {
+        return Provider.GREENHOUSE;
     }
 
     @Override
-    public List<JobPosting> fetch() {
-        List<JobPosting> all = new ArrayList<>();
-        for (String board : boards) {
-            try {
-                JsonNode body = http.get()
-                        .uri("/v1/boards/{board}/jobs?content=true", board)
-                        .retrieve()
-                        .body(JsonNode.class);
-                all.addAll(parse(board, body));
-            } catch (RuntimeException e) {
-                log.warn("Greenhouse board '{}' failed: {}", board, e.getMessage());
-            }
-        }
-        return all;
+    public List<JobPosting> fetchCompany(String board) {
+        JsonNode body = http.get()
+                .uri("/v1/boards/{board}/jobs?content=true", board)
+                .retrieve()
+                .body(JsonNode.class);
+        return parse(board, body);
     }
 
     static List<JobPosting> parse(String board, JsonNode body) {

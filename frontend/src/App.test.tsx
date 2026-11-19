@@ -54,7 +54,7 @@ function fakeApi(handlers: Record<string, () => Response>): Call[] {
   return calls
 }
 
-const gets = (calls: Call[]) => calls.filter((c) => c.method === 'GET')
+const gets = (calls: Call[]) => calls.filter((c) => c.method === 'GET' && c.url.startsWith('/api/jobs'))
 const section = (name: string) => screen.getByRole('region', { name })
 
 describe('App', () => {

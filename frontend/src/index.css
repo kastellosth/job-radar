@@ -30,3 +30,11 @@ h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: v
 .pill { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: #eef6f5; color: var(--teal); margin-left: 6px; }
 .empty { color: var(--muted); font-style: italic; }
 .message { color: var(--muted); font-size: 13px; }
+.companies { margin-top: 16px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.companies summary { cursor: pointer; font-weight: 600; }
+.companies form { display: flex; gap: 8px; margin-top: 10px; }
+.companies input { flex: 1; font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; }
+.companies ul { list-style: none; padding: 0; margin: 8px 0 0; }
+.companies li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-top: 1px solid var(--line); }
+.companies li button { font-size: 12px; padding: 2px 8px; }
+.hint, .note, .muted { color: var(--muted); font-size: 13px; }

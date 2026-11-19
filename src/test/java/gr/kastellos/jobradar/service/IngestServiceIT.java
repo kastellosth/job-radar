@@ -5,6 +5,7 @@ import gr.kastellos.jobradar.domain.Job;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.JobRepository;
 import gr.kastellos.jobradar.domain.JobStatus;
+import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
 import gr.kastellos.jobradar.support.MutableClock;
 import gr.kastellos.jobradar.support.PostgresContainerConfig;
 import gr.kastellos.jobradar.support.StubSource;
@@ -30,11 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
                 "radar.schedule=-",
-                // The real sources stay in the context with nothing to fetch, so no test calls the internet.
-                "radar.sources.workable=",
-                "radar.sources.smartrecruiters=",
-                "radar.sources.greenhouse=",
-                "radar.sources.lever=",
+                // The real sources stay in the context with nothing to fetch (no tracked companies,
+                // Remotive off), so no test calls the internet.
                 "radar.sources.remotive=false"
         })
 @Import({PostgresContainerConfig.class, IngestServiceIT.Stubs.class})
@@ -68,6 +66,8 @@ class IngestServiceIT {
     @Autowired
     private JobRepository jobs;
     @Autowired
+    private TrackedCompanyRepository companies;
+    @Autowired
     private StubSource boardA;
     @Autowired
     private StubSource boardB;
@@ -85,6 +85,7 @@ class IngestServiceIT {
     @BeforeEach
     void cleanStart() {
         jobs.deleteAll();
+        companies.deleteAll();
         boardA.willReturn();
         boardB.willReturn();
         clock.set(DAY_1);

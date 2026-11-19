@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   BUCKETS,
-  UnauthorizedError,
+  errorText,
   fetchJobs,
   ingestNow,
   updateStatus,
@@ -10,6 +10,7 @@ import {
   type Job,
   type JobStatus,
 } from './api'
+import { CompaniesPanel } from './components/CompaniesPanel'
 import { ALL_SOURCES, Filters } from './components/Filters'
 import { JobCard } from './components/JobCard'
 
@@ -33,11 +34,6 @@ function saveKey(key: string) {
   } catch {
     // only a convenience
   }
-}
-
-function errorText(e: unknown): string {
-  if (e instanceof UnauthorizedError) return 'Missing or wrong API key: enter it at the top.'
-  return e instanceof Error ? e.message : String(e)
 }
 
 export default function App() {
@@ -128,6 +124,7 @@ export default function App() {
           source={source}
           onSourceChange={setSource}
         />
+        <CompaniesPanel apiKey={apiKey} />
         {BUCKETS.map((bucket) => {
           const shown = jobs[bucket].filter((j) => source === ALL_SOURCES || j.source === source)
           return (

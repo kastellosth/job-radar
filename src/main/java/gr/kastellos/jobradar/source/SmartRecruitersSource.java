@@ -1,8 +1,9 @@
 package gr.kastellos.jobradar.source;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import gr.kastellos.jobradar.config.RadarProperties;
 import gr.kastellos.jobradar.domain.JobPosting;
+import gr.kastellos.jobradar.domain.Provider;
+import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -18,43 +19,34 @@ import java.util.List;
  * (Next step idea: fetch /postings/{id} for the full jobAd text, only for jobs whose title already looks promising.)
  */
 @Component
-public class SmartRecruitersSource implements JobSource {
+public class SmartRecruitersSource extends CompanyBoardSource {
 
     private static final Logger log = LoggerFactory.getLogger(SmartRecruitersSource.class);
 
     private final RestClient http;
-    private final List<String> companies;
 
-    public SmartRecruitersSource(RestClient.Builder builder, RadarProperties props) {
+    public SmartRecruitersSource(RestClient.Builder builder, TrackedCompanyRepository companies) {
+        super(companies);
         this.http = builder.baseUrl("https://api.smartrecruiters.com").build();
-        this.companies = props.sources().smartrecruiters();
     }
 
     @Override
-    public String name() {
-        return "smartrecruiters";
+    public Provider provider() {
+        return Provider.SMARTRECRUITERS;
     }
 
     @Override
-    public List<JobPosting> fetch() {
-        List<JobPosting> all = new ArrayList<>();
-        for (String company : companies) {
-            try {
-                JsonNode body = http.get()
-                        .uri("/v1/companies/{company}/postings?limit=100", company)
-                        .retrieve()
-                        .body(JsonNode.class);
-                List<JobPosting> jobs = parse(company, body);
-                if (jobs.isEmpty()) {
-                    // SmartRecruiters answers 200 with an empty list even for an id that does not exist.
-                    log.warn("SmartRecruiters company '{}' has no jobs: check the id, or it has no openings now", company);
-                }
-                all.addAll(jobs);
-            } catch (RuntimeException e) {
-                log.warn("SmartRecruiters company '{}' failed: {}", company, e.getMessage());
-            }
+    public List<JobPosting> fetchCompany(String company) {
+        JsonNode body = http.get()
+                .uri("/v1/companies/{company}/postings?limit=100", company)
+                .retrieve()
+                .body(JsonNode.class);
+        List<JobPosting> jobs = parse(company, body);
+        if (jobs.isEmpty()) {
+            // SmartRecruiters answers 200 with an empty list even for an id that does not exist.
+            log.warn("SmartRecruiters company '{}' has no jobs: check the id, or it has no openings now", company);
         }
-        return all;
+        return jobs;
     }
 
     static List<JobPosting> parse(String companyId, JsonNode body) {

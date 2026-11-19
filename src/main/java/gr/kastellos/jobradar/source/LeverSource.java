@@ -1,10 +1,9 @@
 package gr.kastellos.jobradar.source;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import gr.kastellos.jobradar.config.RadarProperties;
 import gr.kastellos.jobradar.domain.JobPosting;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import gr.kastellos.jobradar.domain.Provider;
+import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -17,38 +16,27 @@ import java.util.List;
  * The company slug is the part after jobs.lever.co/ in a careers URL.
  */
 @Component
-public class LeverSource implements JobSource {
-
-    private static final Logger log = LoggerFactory.getLogger(LeverSource.class);
+public class LeverSource extends CompanyBoardSource {
 
     private final RestClient http;
-    private final List<String> companies;
 
-    public LeverSource(RestClient.Builder builder, RadarProperties props) {
+    public LeverSource(RestClient.Builder builder, TrackedCompanyRepository companies) {
+        super(companies);
         this.http = builder.baseUrl("https://api.lever.co").build();
-        this.companies = props.sources().lever();
     }
 
     @Override
-    public String name() {
-        return "lever";
+    public Provider provider() {
+        return Provider.LEVER;
     }
 
     @Override
-    public List<JobPosting> fetch() {
-        List<JobPosting> all = new ArrayList<>();
-        for (String company : companies) {
-            try {
-                JsonNode body = http.get()
-                        .uri("/v0/postings/{company}?mode=json", company)
-                        .retrieve()
-                        .body(JsonNode.class);
-                all.addAll(parse(company, body));
-            } catch (RuntimeException e) {
-                log.warn("Lever company '{}' failed: {}", company, e.getMessage());
-            }
-        }
-        return all;
+    public List<JobPosting> fetchCompany(String company) {
+        JsonNode body = http.get()
+                .uri("/v0/postings/{company}?mode=json", company)
+                .retrieve()
+                .body(JsonNode.class);
+        return parse(company, body);
     }
 
     static List<JobPosting> parse(String company, JsonNode body) {

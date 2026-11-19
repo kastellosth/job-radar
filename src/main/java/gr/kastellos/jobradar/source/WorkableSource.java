@@ -1,10 +1,9 @@
 package gr.kastellos.jobradar.source;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import gr.kastellos.jobradar.config.RadarProperties;
 import gr.kastellos.jobradar.domain.JobPosting;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import gr.kastellos.jobradar.domain.Provider;
+import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -17,39 +16,27 @@ import java.util.List;
  * The account slug is the part after apply.workable.com/ in the company's careers URL.
  */
 @Component
-public class WorkableSource implements JobSource {
-
-    private static final Logger log = LoggerFactory.getLogger(WorkableSource.class);
+public class WorkableSource extends CompanyBoardSource {
 
     private final RestClient http;
-    private final List<String> accounts;
 
-    public WorkableSource(RestClient.Builder builder, RadarProperties props) {
+    public WorkableSource(RestClient.Builder builder, TrackedCompanyRepository companies) {
+        super(companies);
         this.http = builder.baseUrl("https://apply.workable.com").build();
-        this.accounts = props.sources().workable();
     }
 
     @Override
-    public String name() {
-        return "workable";
+    public Provider provider() {
+        return Provider.WORKABLE;
     }
 
     @Override
-    public List<JobPosting> fetch() {
-        List<JobPosting> all = new ArrayList<>();
-        for (String account : accounts) {
-            try {
-                JsonNode body = http.get()
-                        .uri("/api/v1/widget/accounts/{account}?details=true", account)
-                        .retrieve()
-                        .body(JsonNode.class);
-                all.addAll(parse(body));
-            } catch (RuntimeException e) {
-                // One bad slug should not hide the other companies' jobs.
-                log.warn("Workable account '{}' failed: {}", account, e.getMessage());
-            }
-        }
-        return all;
+    public List<JobPosting> fetchCompany(String account) {
+        JsonNode body = http.get()
+                .uri("/api/v1/widget/accounts/{account}?details=true", account)
+                .retrieve()
+                .body(JsonNode.class);
+        return parse(body);
     }
 
     static List<JobPosting> parse(JsonNode body) {

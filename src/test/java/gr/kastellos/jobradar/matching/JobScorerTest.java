@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JobScorerTest {
 
     private final JobScorer scorer = new JobScorer(new RadarProperties(
-            new RadarProperties.Sources(null, null, null, null, false),
+            new RadarProperties.Sources(false),
             new RadarProperties.Profile(
                     Map.of("java", 3, "spring boot", 3, "react", 2, "node.js", 1, "c#", 1),
                     Map.of("junior", 4, "graduate", 4),
@@ -103,7 +103,7 @@ class JobScorerTest {
     @Test
     void anEmptyRoleListMeansEveryTitleIsScored() {
         JobScorer noFilter = new JobScorer(new RadarProperties(
-                new RadarProperties.Sources(null, null, null, null, false),
+                new RadarProperties.Sources(false),
                 new RadarProperties.Profile(Map.of("java", 3), null, null, null, null, 9, 5, 2)));
 
         MatchResult r = noFilter.score(posting("Talent Acquisition Specialist", "Athens", false, "Java"));

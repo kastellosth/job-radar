@@ -6,30 +6,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Everything that changes per person lives in application.yml, not in code:
- * which company boards to poll, and how to score a posting.
+ * How to score a posting lives in application.yml, not in code, so tuning needs no rebuild.
+ * Which companies to read is data, not configuration: see TrackedCompany.
  */
 @ConfigurationProperties(prefix = "radar")
 public record RadarProperties(Sources sources, Profile profile) {
 
-    /**
-     * Company identifiers ("slugs") per job-board provider.
-     *
-     * @param remotive whether to read Remotive's remote software jobs (one call per run)
-     */
-    public record Sources(
-            List<String> workable,
-            List<String> smartrecruiters,
-            List<String> greenhouse,
-            List<String> lever,
-            boolean remotive) {
-
-        public Sources {
-            workable = orEmpty(workable);
-            smartrecruiters = orEmpty(smartrecruiters);
-            greenhouse = orEmpty(greenhouse);
-            lever = orEmpty(lever);
-        }
+    /** @param remotive whether to read Remotive's remote software jobs (one call per run) */
+    public record Sources(boolean remotive) {
     }
 
     /**
