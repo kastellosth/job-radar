@@ -1,0 +1,25 @@
+{
+  "id": "111",
+  "name": "Junior Software Engineer",
+  "company": { "identifier": "AcmeCo", "name": "Acme Co" },
+  "jobAd": {
+    "sections": {
+      "companyDescription": {
+        "title": "Company Description",
+        "text": "<p>We are a leading company with Java experts and senior architects.</p>"
+      },
+      "jobDescription": {
+        "title": "Job Description",
+        "text": "<p>Build REST services in Java and Spring Boot.</p><ul><li>Write tests</li></ul>"
+      },
+      "qualifications": {
+        "title": "Qualifications",
+        "text": "<p>0-2 years of experience.</p>"
+      },
+      "additionalInformation": {
+        "title": "Additional Information",
+        "text": "<p>Hybrid, Thessaloniki office.</p>"
+      }
+    }
+  }
+}

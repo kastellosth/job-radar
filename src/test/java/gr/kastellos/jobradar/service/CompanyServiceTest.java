@@ -55,13 +55,23 @@ class CompanyServiceTest {
     }
 
     @Test
-    void aCompanyWithNoOpenJobsIsStillAddedUnderItsSlug() {
-        when(workable.fetchCompany("quiet")).thenReturn(List.of());
+    void aCompanyWithNoOpenJobsIsStillAddedWithANameMadeFromItsSlug() {
+        when(workable.fetchCompany("quiet-labs")).thenReturn(List.of());
 
-        CompanyService.Added added = service.add("apply.workable.com/quiet");
+        CompanyService.Added added = service.add("apply.workable.com/quiet-labs");
 
         assertThat(added.openJobs()).isZero();
-        assertThat(added.company().getName()).isEqualTo("quiet");
+        assertThat(added.company().getName()).isEqualTo("Quiet Labs");
+    }
+
+    @Test
+    void aBoardThatOnlyRepeatsTheSlugAsCompanyNameGetsANameMadeFromTheSlug() {
+        // Lever's API has no company name, so its postings carry the slug.
+        when(workable.fetchCompany("kaizen-gaming")).thenReturn(List.of(job("kaizen-gaming")));
+
+        CompanyService.Added added = service.add("apply.workable.com/kaizen-gaming");
+
+        assertThat(added.company().getName()).isEqualTo("Kaizen Gaming");
     }
 
     @Test

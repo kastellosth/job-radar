@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * No Spring or I/O in the logic, so it is cheap to unit-test.
  *
  * A job outside the accepted locations, or whose title is not a software role, is skipped with 0 points.
- * Otherwise: score = skill keywords found + title boosts + penalties + experience penalty.
+ * Otherwise: score = skill keywords found + title boosts + title penalties + penalties + experience penalty.
  * Every point is recorded as a human-readable reason, so the UI can show why a job ranked where it did.
  */
 @Component
@@ -54,10 +54,19 @@ public class JobScorer {
         int score = 0;
         score += addMatches(profile.skills(), all, "", reasons);
         score += addMatches(profile.titleBoosts(), title, "title:", reasons);
+        score += addMatches(profile.titlePenalties(), title, "", reasons);
         score += addMatches(profile.penalties(), all, "", reasons);
         score += experiencePenalty(all, reasons);
 
         return new MatchResult(score, bucketFor(score), reasons);
+    }
+
+    /**
+     * Whether the posting can score at all: an accepted location and a software title. Sources whose list has no
+     * description use it to fetch the full ad only for these.
+     */
+    public boolean worthReading(JobPosting posting) {
+        return locationAccepted(posting) && softwareRole(lower(posting.title()));
     }
 
     Bucket bucketFor(int score) {

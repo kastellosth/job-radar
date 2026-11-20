@@ -20,7 +20,8 @@ class JobScorerTest {
             new RadarProperties.Profile(
                     Map.of("java", 3, "spring boot", 3, "react", 2, "node.js", 1, "c#", 1),
                     Map.of("junior", 4, "graduate", 4),
-                    Map.of("senior", -8, "german", -6),
+                    Map.of("senior", -8, "manager", -5),
+                    Map.of("german", -6),
                     List.of("greece", "athens", "thessaloniki", "heraklion"),
                     List.of("developer", "engineer", "προγραμματιστής"),
                     9, 5, 2)));
@@ -46,6 +47,22 @@ class JobScorerTest {
 
         assertThat(r.bucket()).isEqualTo(Bucket.SKIP);
         assertThat(r.reasons()).contains("-8 senior", "-10 asks for 7+ years");
+    }
+
+    @Test
+    void seniorityWordsCountOnlyInTheTitle() {
+        MatchResult r = scorer.score(posting("Junior Java Developer", "Athens", false,
+                "You will work with senior engineers and report to the engineering manager."));
+
+        assertThat(r.score()).isEqualTo(3 + 4);
+        assertThat(r.reasons()).noneMatch(reason -> reason.contains("senior") || reason.contains("manager"));
+    }
+
+    @Test
+    void otherPenaltiesCountAnywhereInTheAd() {
+        MatchResult r = scorer.score(posting("Java Developer", "Athens", false, "Fluent German is required."));
+
+        assertThat(r.reasons()).contains("-6 german");
     }
 
     @Test
@@ -104,7 +121,7 @@ class JobScorerTest {
     void anEmptyRoleListMeansEveryTitleIsScored() {
         JobScorer noFilter = new JobScorer(new RadarProperties(
                 new RadarProperties.Sources(false),
-                new RadarProperties.Profile(Map.of("java", 3), null, null, null, null, 9, 5, 2)));
+                new RadarProperties.Profile(Map.of("java", 3), null, null, null, null, null, 9, 5, 2)));
 
         MatchResult r = noFilter.score(posting("Talent Acquisition Specialist", "Athens", false, "Java"));
 

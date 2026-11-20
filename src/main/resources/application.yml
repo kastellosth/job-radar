@@ -19,10 +19,36 @@ spring:
       enabled: true
   flyway:
     enabled: true
+  # Gmail by default: MAIL_USERNAME is the Gmail address, MAIL_PASSWORD an app password (Google account >
+  # Security > App passwords), not the account password. Any other SMTP server works through the same variables.
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
 
 radar:
   # Spring cron (sec min hour day month weekday), Europe/Athens time. Default: 08:00 and 18:00 every day.
   schedule: "0 0 8,18 * * *"
+
+  # A job that no board has listed for this long is taken as closed and hidden (jobs he applied to stay).
+  # Longer than one run, so a board that is down for a day does not empty the list.
+  hide-unlisted-after: 3d
+
+  # Weekly email of new STRONG matches. Off while DIGEST_TO is empty.
+  digest:
+    to: ${DIGEST_TO:}
+    # Spring cron, Europe/Athens time. Default: Monday 08:30, right after the 08:00 fetch.
+    schedule: "0 30 8 * * MON"
+    # Optional link to the dashboard at the bottom of the email.
+    dashboard-url: ${DASHBOARD_URL:}
 
   # Required in the X-Api-Key header for POST/PATCH. No default on purpose: without it, writes are refused.
   api-key: ${API_KEY:}
@@ -64,14 +90,17 @@ radar:
       full stack: 2
       fullstack: 2
       java: 2
-    # Negative points: roles he should not spend time on.
-    penalties:
+    # Negative points when the title says the role is too senior. Only the title: ads often mention
+    # "senior engineers" or "the engineering manager" around a junior role.
+    title-penalties:
       senior: -8
       lead: -8
       principal: -8
       architect: -6
       head of: -8
       manager: -5
+    # Negative points when the keyword appears anywhere in the ad.
+    penalties:
       german: -6
       master's degree: -2
     # Non-remote jobs must be in one of these (substring match on the location text).

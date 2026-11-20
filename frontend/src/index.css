@@ -25,7 +25,9 @@ button { font: inherit; font-size: 15px; border: 1px solid var(--line); backgrou
 button:hover:not(:disabled) { border-color: var(--muted); }
 button:disabled { opacity: .45; cursor: default; }
 button.primary { background: var(--teal); color: #fff; border-color: var(--teal); font-weight: 600; }
-.message { color: var(--muted); font-size: 15px; }
+.message { color: var(--muted); font-size: 15px; display: inline-flex; align-items: center; gap: 6px; }
+.message.error { color: #b91c1c; font-weight: 600; }
+.message .dismiss { font-size: 16px; line-height: 1; padding: 2px 8px; color: inherit; }
 
 main { max-width: 1000px; margin: 0 auto; padding: 20px 24px 48px; }
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }

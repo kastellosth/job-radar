@@ -71,10 +71,19 @@ export function formatDate(iso: string): string {
 
 const DAY = 24 * 60 * 60 * 1000
 const relative = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+const athensDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' })
 
-/** "today", "yesterday", "3 days ago", "2 months ago". A date in the future (clock skew) counts as today. */
+/** Days since 1970 of the Athens calendar day the moment falls on. */
+function dayNumber(ms: number): number {
+  return Date.parse(athensDay.format(ms)) / DAY
+}
+
+/**
+ * "today", "yesterday", "3 days ago", "2 months ago", counted in Athens calendar days like formatDate, so a job
+ * posted at 23:00 is "yesterday" the next morning. A date in the future (clock skew) counts as today.
+ */
 export function timeAgo(iso: string, now: number = Date.now()): string {
-  const days = Math.floor((now - Date.parse(iso)) / DAY)
+  const days = dayNumber(now) - dayNumber(Date.parse(iso))
   if (days < 1) return 'today'
   if (days < 30) return relative.format(-days, 'day')
   if (days < 365) return relative.format(-Math.floor(days / 30), 'month')

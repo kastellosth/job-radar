@@ -1,10 +1,12 @@
 package gr.kastellos.jobradar.web;
 
+import gr.kastellos.jobradar.config.AppConfig;
 import gr.kastellos.jobradar.domain.JobRepository;
 import gr.kastellos.jobradar.service.IngestService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * class would reuse the outer class's MockMvc, which has a key configured.
  */
 @WebMvcTest(JobController.class)
+@Import(AppConfig.class)
 @TestPropertySource(properties = "radar.api-key=")
 class ApiKeyFilterWithoutKeyTest {
 

@@ -1,0 +1,35 @@
+{
+  "offset": 0, "limit": 100, "totalFound": 3,
+  "content": [
+    {
+      "id": "111",
+      "name": "Junior Software Engineer",
+      "releasedDate": "2026-11-05T09:12:44.000Z",
+      "company": { "identifier": "AcmeCo", "name": "Acme Co" },
+      "location": { "city": "Thessaloniki", "country": "gr", "remote": false },
+      "department": { "label": "Software Development" },
+      "experienceLevel": { "label": "Entry Level" },
+      "function": { "label": "Information Technology" }
+    },
+    {
+      "id": "222",
+      "name": "Accountant",
+      "releasedDate": "2026-11-05T09:12:44.000Z",
+      "company": { "identifier": "AcmeCo", "name": "Acme Co" },
+      "location": { "city": "Athens", "country": "gr", "remote": false },
+      "department": { "label": "Finance" },
+      "experienceLevel": { "label": "Mid-Senior Level" },
+      "function": { "label": "Accounting" }
+    },
+    {
+      "id": "333",
+      "name": "Java Developer",
+      "releasedDate": "2026-11-05T09:12:44.000Z",
+      "company": { "identifier": "AcmeCo", "name": "Acme Co" },
+      "location": { "city": "Berlin", "country": "de", "remote": false },
+      "department": { "label": "Software Development" },
+      "experienceLevel": { "label": "Entry Level" },
+      "function": { "label": "Information Technology" }
+    }
+  ]
+}

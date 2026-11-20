@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.Provider;
 import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
+import gr.kastellos.jobradar.matching.JobScorer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -15,19 +16,25 @@ import java.util.List;
 /**
  * SmartRecruiters public Posting API (used e.g. by Netcompany-Intrasoft).
  * GET https://api.smartrecruiters.com/v1/companies/{companyId}/postings
- * The list endpoint has no description, so scoring here relies on title, department and experience level.
- * (Next step idea: fetch /postings/{id} for the full jobAd text, only for jobs whose title already looks promising.)
+ * The list endpoint has no description. During a fetch run, the full ad (GET .../postings/{id}) is read for jobs
+ * that can score at all (accepted location, software title), at most {@value #MAX_DETAILS} per company. Other jobs,
+ * and any whose ad cannot be read, are scored on title, department and experience level.
  */
 @Component
 public class SmartRecruitersSource extends CompanyBoardSource {
 
     private static final Logger log = LoggerFactory.getLogger(SmartRecruitersSource.class);
 
-    private final RestClient http;
+    /** One extra request per job: a cap keeps a big company from slowing every run down. */
+    static final int MAX_DETAILS = 50;
 
-    public SmartRecruitersSource(RestClient.Builder builder, TrackedCompanyRepository companies) {
+    private final RestClient http;
+    private final JobScorer scorer;
+
+    public SmartRecruitersSource(RestClient.Builder builder, TrackedCompanyRepository companies, JobScorer scorer) {
         super(companies);
         this.http = builder.baseUrl("https://api.smartrecruiters.com").build();
+        this.scorer = scorer;
     }
 
     @Override
@@ -47,6 +54,66 @@ public class SmartRecruitersSource extends CompanyBoardSource {
             log.warn("SmartRecruiters company '{}' has no jobs: check the id, or it has no openings now", company);
         }
         return jobs;
+    }
+
+    @Override
+    protected List<JobPosting> complete(String company, List<JobPosting> postings) {
+        List<JobPosting> out = new ArrayList<>(postings.size());
+        int read = 0;
+        int failed = 0;
+        for (JobPosting p : postings) {
+            if (read >= MAX_DETAILS || !scorer.worthReading(p)) {
+                out.add(p);
+                continue;
+            }
+            read++;
+            try {
+                JsonNode detail = http.get()
+                        .uri("/v1/companies/{company}/postings/{id}", company, p.externalId())
+                        .retrieve()
+                        .body(JsonNode.class);
+                out.add(withDescription(p, adText(detail)));
+            } catch (RuntimeException e) {
+                failed++;
+                out.add(p);
+            }
+        }
+        if (failed > 0) {
+            log.warn("SmartRecruiters company '{}': {} of {} full ads could not be read; scored on title only",
+                    company, failed, read);
+        }
+        return out;
+    }
+
+    /**
+     * The ad's own sections as plain text. The company description is left out: it is the same boilerplate on
+     * every ad and would give every job the same skill points.
+     */
+    static String adText(JsonNode detail) {
+        if (detail == null) {
+            return "";
+        }
+        JsonNode sections = detail.path("jobAd").path("sections");
+        List<String> parts = new ArrayList<>();
+        for (String section : List.of("jobDescription", "qualifications", "additionalInformation")) {
+            String text = Json.plain(Json.text(sections.path(section), "text"));
+            if (!text.isBlank()) {
+                parts.add(text);
+            }
+        }
+        return String.join("\n", parts);
+    }
+
+    /** Keeps the labels (e.g. "Entry Level") the list gave, in front of the ad text. */
+    private static JobPosting withDescription(JobPosting p, String adText) {
+        if (adText.isBlank()) {
+            return p;
+        }
+        String description = p.description() == null || p.description().isBlank()
+                ? adText
+                : p.description() + "\n" + adText;
+        return new JobPosting(p.source(), p.externalId(), p.company(), p.title(), p.location(), p.remote(),
+                p.url(), description, p.postedAt());
     }
 
     static List<JobPosting> parse(String companyId, JsonNode body) {

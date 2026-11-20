@@ -84,10 +84,24 @@ describe('CompaniesPanel', () => {
     render(<CompaniesPanel apiKey="s3cret" />)
     await screen.findByText('LearnWorlds')
 
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     await userEvent.click(screen.getByRole('button', { name: 'Remove LearnWorlds' }))
 
+    expect(window.confirm).toHaveBeenCalledWith('Stop following LearnWorlds? Its board will not be read any more.')
     expect(await screen.findByRole('note')).toHaveTextContent('Removed LearnWorlds.')
     expect(calls.find((c) => c.method === 'DELETE')?.init?.headers).toMatchObject({ 'X-Api-Key': 's3cret' })
     await waitFor(() => expect(listCalls(calls)).toHaveLength(2))
+  })
+
+  it('keeps the company when the removal is not confirmed', async () => {
+    const calls = fakeApi({ 'GET /api/companies': () => json([LEARNWORLDS]) })
+    render(<CompaniesPanel apiKey="s3cret" />)
+    await screen.findByText('LearnWorlds')
+
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    await userEvent.click(screen.getByRole('button', { name: 'Remove LearnWorlds' }))
+
+    expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
+    expect(screen.getByText('LearnWorlds')).toBeInTheDocument()
   })
 })

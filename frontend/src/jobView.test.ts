@@ -70,6 +70,13 @@ describe('timeAgo', () => {
   ])('%s is "%s"', (iso, expected) => {
     expect(timeAgo(iso, now)).toBe(expected)
   })
+
+  it('counts Athens calendar days, like the date next to it', () => {
+    // 23:30 in Athens on the 18th, read at 08:00 on the 19th: under 24 hours, but yesterday.
+    expect(timeAgo('2026-11-18T21:30:00Z', Date.parse('2026-11-19T06:00:00Z'))).toBe('yesterday')
+    // 00:30 in Athens on the 19th, read at 23:00 the same day.
+    expect(timeAgo('2026-11-18T22:30:00Z', Date.parse('2026-11-19T21:00:00Z'))).toBe('today')
+  })
 })
 
 describe('formatDate', () => {

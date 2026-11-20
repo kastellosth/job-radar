@@ -55,7 +55,10 @@ public class CompanyController {
         return new AddedCompany(CompanyView.of(added.company()), added.openJobs());
     }
 
-    /** Stops reading the company's board. Jobs already collected stay, with their statuses. */
+    /**
+     * Stops reading the company's board. Its jobs stay in the database with their statuses, but leave the
+     * dashboard once they have not been listed for radar.hide-unlisted-after (jobs he applied to stay).
+     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void remove(@PathVariable long id) {

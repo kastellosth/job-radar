@@ -21,7 +21,9 @@ public record RadarProperties(Sources sources, Profile profile) {
      *
      * @param skills          keyword -> points when it appears anywhere in title or description
      * @param titleBoosts     keyword -> points when it appears in the title (e.g. "junior")
-     * @param penalties       keyword -> points (negative) when it appears, e.g. "senior", "5+ years"
+     * @param titlePenalties  keyword -> points (negative) when it is in the title, e.g. "senior"; only the title,
+     *                        because ads often say "you will report to the engineering manager"
+     * @param penalties       keyword -> points (negative) when it appears anywhere, e.g. "german"
      * @param locations       locations he accepts; a posting elsewhere (and not remote) is dropped
      * @param roleKeywords    a title must contain one of these to count as a software job; empty = no filter
      * @param strongThreshold score at or above which a job is a strong match
@@ -30,6 +32,7 @@ public record RadarProperties(Sources sources, Profile profile) {
     public record Profile(
             Map<String, Integer> skills,
             Map<String, Integer> titleBoosts,
+            Map<String, Integer> titlePenalties,
             Map<String, Integer> penalties,
             List<String> locations,
             List<String> roleKeywords,
@@ -40,6 +43,7 @@ public record RadarProperties(Sources sources, Profile profile) {
         public Profile {
             skills = skills == null ? Map.of() : skills;
             titleBoosts = titleBoosts == null ? Map.of() : titleBoosts;
+            titlePenalties = titlePenalties == null ? Map.of() : titlePenalties;
             penalties = penalties == null ? Map.of() : penalties;
             locations = orEmpty(locations);
             roleKeywords = orEmpty(roleKeywords);

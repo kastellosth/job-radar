@@ -54,6 +54,15 @@ class SourceParsingTest {
     }
 
     @Test
+    void smartRecruitersAdTextIsTheAdsOwnSectionsWithoutTheCompanyBlurb() throws IOException {
+        String text = SmartRecruitersSource.adText(fixture("smartrecruiters-detail.json"));
+
+        assertThat(text).contains("Build REST services in Java and Spring Boot.", "0-2 years of experience.",
+                "Hybrid, Thessaloniki office.");
+        assertThat(text).doesNotContain("<p>", "We are a leading company");
+    }
+
+    @Test
     void greenhouseUnescapesHtmlContent() throws IOException {
         List<JobPosting> jobs = GreenhouseSource.parse("acme", fixture("greenhouse.json"));
 

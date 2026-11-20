@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -105,6 +105,60 @@ describe('App', () => {
     expect(within(section('Good match')).getByRole('heading')).toHaveTextContent('Good match (0)')
 
     expect(gets(calls)).toHaveLength(1)
+  })
+
+  it('says a bucket emptied by the search has no matches, unlike a bucket with no jobs at all', async () => {
+    fakeApi({ 'GET /api/jobs': () => json(JOBS) })
+    render(<App />)
+    await screen.findByRole('article', { name: 'Junior Java Developer' })
+
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search' }), 'nothing like this')
+
+    expect(within(section('Strong match')).getByText('No jobs here match your search or company.')).toBeInTheDocument()
+    expect(within(section('Stretch')).getByText('Nothing here yet.')).toBeInTheDocument()
+  })
+
+  it('says it is loading until the jobs arrive', async () => {
+    fakeApi({ 'GET /api/jobs': () => json(JOBS) })
+    render(<App />)
+
+    expect(within(section('Stretch')).getByText('Loading…')).toBeInTheDocument()
+    expect(await within(section('Stretch')).findByText('Nothing here yet.')).toBeInTheDocument()
+  })
+
+  it('says the jobs could not be loaded, instead of "nothing here", when the server fails', async () => {
+    fakeApi({ 'GET /api/jobs': () => json({ detail: 'Database is down' }, 500) })
+    render(<App />)
+
+    expect(await within(section('Strong match')).findByText('Could not load the jobs.')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Database is down')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Close message' }))
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
+  it('lets the fetch report fade after a few seconds, but keeps errors', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    let ingestAnswer = json({ fetched: 10, unique: 10, inserted: 1, updated: 9 })
+    fakeApi({
+      'GET /api/jobs': () => json(JOBS),
+      'POST /api/ingest': () => ingestAnswer,
+    })
+    localStorage.setItem('jobRadar.apiKey', 's3cret')
+    render(<App />)
+    await screen.findByRole('article', { name: 'Junior Java Developer' })
+
+    await user.click(screen.getByRole('button', { name: 'Fetch now' }))
+    expect(await screen.findByText('Fetched 10, 1 new, 9 updated')).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(8000))
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+
+    ingestAnswer = json({ detail: 'A fetch is already running.' }, 409)
+    await user.click(screen.getByRole('button', { name: 'Fetch now' }))
+    expect(await screen.findByText('A fetch is already running.')).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(60_000))
+    expect(screen.getByRole('status')).toHaveTextContent('A fetch is already running.')
   })
 
   it('sends a status change with the API key, remembers the key, and reloads the list', async () => {

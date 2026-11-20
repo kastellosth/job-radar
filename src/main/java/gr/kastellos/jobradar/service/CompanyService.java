@@ -12,10 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -69,7 +69,11 @@ public class CompanyService {
         } catch (HttpClientErrorException.NotFound e) {
             throw new IllegalArgumentException(link.provider().displayName() + " has no company '" + link.slug() + "'");
         }
-        String name = jobs.stream().map(JobPosting::company).filter(Objects::nonNull).findFirst().orElse(link.slug());
+        String name = jobs.stream()
+                .map(JobPosting::company)
+                .filter(n -> n != null && !n.equals(link.slug()))
+                .findFirst()
+                .orElse(nameFromSlug(link.slug()));
 
         try {
             TrackedCompany saved = companies.saveAndFlush(
@@ -79,6 +83,14 @@ public class CompanyService {
             // Added by another request between the check and the insert; the unique index caught it.
             throw new AlreadyTrackedException(label + " is already tracked");
         }
+    }
+
+    /** Lever gives no company name: "kaizen-gaming" becomes "Kaizen Gaming". */
+    static String nameFromSlug(String slug) {
+        return Arrays.stream(slug.split("[-_.]+"))
+                .filter(word -> !word.isEmpty())
+                .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
+                .collect(Collectors.joining(" "));
     }
 
     @Transactional

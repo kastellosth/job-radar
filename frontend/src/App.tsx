@@ -19,6 +19,25 @@ const LABELS: Record<Bucket, string> = { STRONG: 'Strong match', GOOD: 'Good mat
 const DEFAULT_STATUSES: JobStatus[] = ['NEW', 'SEEN', 'APPLIED']
 const KEY_STORAGE = 'jobRadar.apiKey'
 const NO_JOBS: GroupedJobs = { STRONG: [], GOOD: [], STRETCH: [] }
+/** How long a message like "Fetched 120, 3 new" stays at the top. Errors stay until closed or replaced. */
+const NOTICE_MS = 8000
+
+/** The first load decides what an empty bucket means: still loading, server down, or really empty. */
+type FirstLoad = 'loading' | 'done' | 'failed'
+
+interface Notice {
+  text: string
+  error: boolean
+}
+
+/** What an empty bucket says, so "nothing here" is only shown when it is true. */
+function emptyText(noneTicked: boolean, firstLoad: FirstLoad, loadedInBucket: number): string {
+  if (noneTicked) return 'Tick a status to see jobs.'
+  if (firstLoad === 'loading') return 'Loading…'
+  if (firstLoad === 'failed') return 'Could not load the jobs.'
+  if (loadedInBucket > 0) return 'No jobs here match your search or company.'
+  return 'Nothing here yet.'
+}
 
 // Storage can be blocked (private mode, strict settings); the page must still work without it.
 function readKey(): string {
@@ -42,8 +61,18 @@ export default function App() {
   const [view, setView] = useState<ViewOptions>(DEFAULT_VIEW)
   const [loaded, setLoaded] = useState<GroupedJobs>(NO_JOBS)
   const [apiKey, setApiKey] = useState(readKey)
-  const [message, setMessage] = useState('')
+  const [notice, setNotice] = useState<Notice | null>(null)
   const [fetching, setFetching] = useState(false)
+  const [firstLoad, setFirstLoad] = useState<FirstLoad>('loading')
+
+  const say = (text: string) => setNotice({ text, error: false })
+  const fail = (e: unknown) => setNotice({ text: errorText(e), error: true })
+
+  useEffect(() => {
+    if (!notice || notice.error || fetching) return
+    const timer = setTimeout(() => setNotice(null), NOTICE_MS)
+    return () => clearTimeout(timer)
+  }, [notice, fetching])
 
   // The API treats "no status" as its default set, so an empty choice is answered here instead.
   const noneTicked = statuses.length === 0
@@ -58,8 +87,16 @@ export default function App() {
     // A slow answer for an old filter must not overwrite the answer for the current one.
     let current = true
     fetchJobs(statuses)
-      .then((result) => current && setLoaded(result))
-      .catch((e: unknown) => current && setMessage(errorText(e)))
+      .then((result) => {
+        if (!current) return
+        setLoaded(result)
+        setFirstLoad('done')
+      })
+      .catch((e: unknown) => {
+        if (!current) return
+        fail(e)
+        setFirstLoad((state) => (state === 'loading' ? 'failed' : state))
+      })
     return () => {
       current = false
     }
@@ -72,7 +109,7 @@ export default function App() {
       await updateStatus(job.id, status, apiKey)
       reload()
     } catch (e) {
-      setMessage(errorText(e))
+      fail(e)
     }
   }
 
@@ -87,20 +124,20 @@ export default function App() {
       [job.bucket]: current[job.bucket].map((j) => (j.id === job.id ? { ...j, status: 'SEEN' as const } : j)),
     }))
     updateStatus(job.id, 'SEEN', apiKey).catch((e: unknown) => {
-      setMessage(errorText(e))
+      fail(e)
       reload()
     })
   }
 
   async function fetchNow() {
     setFetching(true)
-    setMessage('Fetching…')
+    say('Fetching…')
     try {
       const r = await ingestNow(apiKey)
-      setMessage(`Fetched ${r.fetched}, ${r.inserted} new, ${r.updated} updated`)
+      say(`Fetched ${r.fetched}, ${r.inserted} new, ${r.updated} updated`)
       reload()
     } catch (e) {
-      setMessage(errorText(e))
+      fail(e)
     } finally {
       setFetching(false)
     }
@@ -110,8 +147,13 @@ export default function App() {
     <>
       <header>
         <h1>Job Radar</h1>
-        <span className="message" role="status">
-          {message}
+        <span className={notice?.error ? 'message error' : 'message'} role="status">
+          {notice?.text}
+          {notice?.error && (
+            <button type="button" className="dismiss" aria-label="Close message" onClick={() => setNotice(null)}>
+              ×
+            </button>
+          )}
         </span>
         <span className="spacer" />
         <label>
@@ -147,7 +189,7 @@ export default function App() {
                 {LABELS[bucket]} ({shown.length})
               </h2>
               {shown.length === 0 ? (
-                <p className="empty">Nothing here yet.</p>
+                <p className="empty">{emptyText(noneTicked, firstLoad, jobs[bucket].length)}</p>
               ) : (
                 shown.map((job) => (
                   <JobCard key={job.id} job={job} onStatus={changeStatus} onOpen={markOpened} />

@@ -121,14 +121,14 @@ class IngestServiceIT {
         jobs.save(stored);
 
         clock.set(DAY_2);
-        boardA.willReturn(junior("board-a", "Acme S.A.", "Java and Spring Boot. Senior team, 6+ years."));
+        boardA.willReturn(junior("board-a", "Acme S.A.", "Java and Spring Boot. 10+ years of experience."));
         var report = ingest.run();
 
         assertThat(report).isEqualTo(new IngestService.IngestReport(1, 1, 0, 1));
         Job reloaded = jobs.findByFingerprint(posting.fingerprint()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(JobStatus.APPLIED);
         assertThat(reloaded.getBucket()).isEqualTo(Bucket.SKIP);
-        assertThat(reloaded.getReasons()).contains("-8 senior", "-8 asks for 6+ years");
+        assertThat(reloaded.getReasons()).contains("-16 asks for 10+ years");
         assertThat(reloaded.getFirstSeenAt()).isEqualTo(DAY_1);
         assertThat(reloaded.getLastSeenAt()).isEqualTo(DAY_2);
     }

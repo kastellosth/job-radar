@@ -9,14 +9,17 @@ import gr.kastellos.jobradar.domain.MatchResult;
 import gr.kastellos.jobradar.matching.JobScorer;
 import gr.kastellos.jobradar.source.JobSource;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -56,7 +59,7 @@ class IngestServiceTest {
         var service = new IngestService(List.of(
                 source("workable", List.of(posting("workable", "Junior Java Developer"))),
                 source("lever", List.of(posting("lever", "Junior Java Developer"), posting("lever", "QA Engineer")))),
-                scorer, repo, clock);
+                scorer, repo, clock, TransactionOperations.withoutTransaction());
 
         var report = service.run();
 
@@ -71,7 +74,8 @@ class IngestServiceTest {
         existing.setStatus(JobStatus.APPLIED);
         when(repo.findByFingerprint(p.fingerprint())).thenReturn(Optional.of(existing));
         when(scorer.score(any())).thenReturn(new MatchResult(10, Bucket.STRONG, List.of("+3 java")));
-        var service = new IngestService(List.of(source("workable", List.of(p))), scorer, repo, clock);
+        var service = new IngestService(List.of(source("workable", List.of(p))), scorer, repo, clock,
+                TransactionOperations.withoutTransaction());
 
         var report = service.run();
 
@@ -89,10 +93,31 @@ class IngestServiceTest {
         var service = new IngestService(List.of(
                 failing(),
                 source("workable", List.of(posting("workable", "Junior Developer")))),
-                scorer, repo, clock);
+                scorer, repo, clock, TransactionOperations.withoutTransaction());
 
         var report = service.run();
 
         assertThat(report.inserted()).isEqualTo(1);
+    }
+
+    @Test
+    void aSecondRunIsRefusedWhileTheFirstIsStillFetching() {
+        when(scorer.score(any())).thenReturn(new MatchResult(5, Bucket.GOOD, List.of()));
+        when(repo.findByFingerprint(any())).thenReturn(Optional.empty());
+        AtomicReference<IngestService> service = new AtomicReference<>();
+        JobSource startsAnotherRun = new JobSource() {
+            public String name() { return "slow"; }
+            public List<JobPosting> fetch() {
+                // "Fetch now" pressed while this run is still reading the boards.
+                assertThatThrownBy(() -> service.get().run()).isInstanceOf(IngestService.AlreadyRunningException.class);
+                return List.of(posting("slow", "Junior Developer"));
+            }
+        };
+        service.set(new IngestService(List.of(startsAnotherRun), scorer, repo, clock,
+                TransactionOperations.withoutTransaction()));
+
+        assertThat(service.get().run().inserted()).isEqualTo(1);
+        // Once the first run is over, the next one is allowed again.
+        assertThat(service.get().run().fetched()).isEqualTo(1);
     }
 }

@@ -66,10 +66,47 @@ class JobRepositoryIT {
                 job("Skipped", 0, SKIP, T0),
                 hidden));
 
-        List<Job> result = jobs.findByBucketInAndStatusInOrderByScoreDescFirstSeenAtDesc(
+        List<Job> result = jobs.dashboard(
                 EnumSet.of(STRONG, GOOD, STRETCH),
-                EnumSet.of(JobStatus.NEW, JobStatus.SEEN, JobStatus.APPLIED));
+                EnumSet.of(JobStatus.NEW, JobStatus.SEEN, JobStatus.APPLIED),
+                T0.minusSeconds(60));
 
         assertThat(result).extracting(Job::getTitle).containsExactly("Strong newer", "Strong older", "Good");
+    }
+
+    @Test
+    void dashboardQueryLeavesOutJobsNoBoardListsAnyMoreExceptOnesHeAppliedTo() {
+        Job applied = job("Closed but applied", 8, GOOD, T0);
+        applied.setStatus(JobStatus.APPLIED);
+        jobs.saveAllAndFlush(List.of(
+                job("Still listed", 8, GOOD, T0.plusSeconds(3 * 86_400)),
+                job("Closed", 8, GOOD, T0),
+                applied));
+
+        List<Job> result = jobs.dashboard(
+                EnumSet.of(STRONG, GOOD, STRETCH),
+                EnumSet.of(JobStatus.NEW, JobStatus.SEEN, JobStatus.APPLIED),
+                T0.plusSeconds(86_400));
+
+        assertThat(result).extracting(Job::getTitle).containsExactlyInAnyOrder("Still listed", "Closed but applied");
+    }
+
+    @Test
+    void weeklyEmailQueryFindsNewStrongJobsHeHasNotActedOnThatAreStillListed() {
+        Instant weekStart = T0;
+        Job applied = job("Applied", 12, STRONG, T0.plusSeconds(3600));
+        applied.setStatus(JobStatus.APPLIED);
+        Job seen = job("Seen", 10, STRONG, T0.plusSeconds(3600));
+        seen.setStatus(JobStatus.SEEN);
+        jobs.saveAllAndFlush(List.of(
+                job("New strong", 12, STRONG, T0.plusSeconds(3600)),
+                seen,
+                job("Too old", 12, STRONG, T0.minusSeconds(3600)),
+                job("Good only", 8, GOOD, T0.plusSeconds(3600)),
+                applied));
+
+        List<Job> result = jobs.newMatches(STRONG, EnumSet.of(JobStatus.NEW, JobStatus.SEEN), weekStart, T0);
+
+        assertThat(result).extracting(Job::getTitle).containsExactly("New strong", "Seen");
     }
 }

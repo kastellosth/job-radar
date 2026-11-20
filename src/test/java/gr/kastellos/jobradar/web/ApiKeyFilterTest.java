@@ -1,10 +1,12 @@
 package gr.kastellos.jobradar.web;
 
+import gr.kastellos.jobradar.config.AppConfig;
 import gr.kastellos.jobradar.domain.JobRepository;
 import gr.kastellos.jobradar.service.IngestService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -12,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -26,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** The filter in front of the real controller, with the service and repository mocked. */
 @WebMvcTest(JobController.class)
+@Import(AppConfig.class)
 @TestPropertySource(properties = "radar.api-key=test-key")
 class ApiKeyFilterTest {
 
@@ -67,6 +71,17 @@ class ApiKeyFilterTest {
     }
 
     @Test
+    void secondFetchWhileOneIsRunningIsAConflict() throws Exception {
+        when(ingest.run()).thenThrow(new IngestService.AlreadyRunningException());
+
+        mvc.perform(post("/api/ingest").header("X-Api-Key", "test-key"))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value(
+                        "A fetch is already running. Its new jobs will show up when it finishes."));
+    }
+
+    @Test
     void patchWithoutKeyIsRefusedBeforeTheJobIsLookedUp() throws Exception {
         mvc.perform(patch("/api/jobs/1/status")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -89,8 +104,7 @@ class ApiKeyFilterTest {
 
     @Test
     void readingJobsNeedsNoKey() throws Exception {
-        when(jobs.findByBucketInAndStatusInOrderByScoreDescFirstSeenAtDesc(anyCollection(), anyCollection()))
-                .thenReturn(List.of());
+        when(jobs.dashboard(anyCollection(), anyCollection(), any())).thenReturn(List.of());
 
         mvc.perform(get("/api/jobs")).andExpect(status().isOk());
     }

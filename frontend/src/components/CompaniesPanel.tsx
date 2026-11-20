@@ -40,9 +40,10 @@ export function CompaniesPanel({ apiKey }: Props) {
   }
 
   async function remove(company: Company) {
+    if (!window.confirm(`Stop following ${company.name}? Its board will not be read any more.`)) return
     try {
       await removeCompany(company.id, apiKey)
-      setNote(`Removed ${company.name}. Jobs already collected stay.`)
+      setNote(`Removed ${company.name}. Its jobs leave the list in a few days, except ones you applied to.`)
       setReloads((n) => n + 1)
     } catch (err) {
       setNote(errorText(err))
