@@ -7,6 +7,7 @@ import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,8 +57,14 @@ public class GreenhouseSource extends CompanyBoardSource {
                     Json.looksRemote(location),
                     Json.text(j, "absolute_url"),
                     Json.plain(Json.text(j, "content")),
-                    Json.instant(j, "updated_at")));
+                    postedAt(j)));
         }
         return out;
+    }
+
+    /** updated_at changes whenever the ad is edited; first_published is when it went online. */
+    private static Instant postedAt(JsonNode job) {
+        Instant published = Json.instant(job, "first_published");
+        return published != null ? published : Json.instant(job, "updated_at");
     }
 }

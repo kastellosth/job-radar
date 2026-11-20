@@ -65,6 +65,17 @@ class SourceParsingTest {
     }
 
     @Test
+    void greenhouseDateIsWhenTheJobWasFirstPublishedNotLastEdited() throws IOException {
+        assertThat(GreenhouseSource.parse("acme", fixture("greenhouse.json")).get(0).postedAt())
+                .isEqualTo(Instant.parse("2026-10-22T08:43:36Z"));
+
+        JsonNode noPublishDate = mapper.readTree(
+                "{\"jobs\":[{\"id\":1,\"title\":\"Developer\",\"updated_at\":\"2026-11-11T10:00:00-05:00\"}]}");
+        assertThat(GreenhouseSource.parse("acme", noPublishDate).get(0).postedAt())
+                .isEqualTo(Instant.parse("2026-11-11T15:00:00Z"));
+    }
+
+    @Test
     void lever() throws IOException {
         List<JobPosting> jobs = LeverSource.parse("acme", fixture("lever.json"));
 

@@ -107,7 +107,7 @@ Unit tests:
 
 - `JobScorerTest`: the software-role filter (in English and Greek, also in capitals without accents), scoring rules, word boundaries (`java` ≠ `javascript`, `node.js` and `c#` still match), location filter, experience parsing in English and Greek, bucket thresholds.
 - `JobPostingTest`: deduplication across boards, Greek accents, remote jobs.
-- `SourceParsingTest`: each provider mapped from a saved sample response, no network.
+- `SourceParsingTest`: each provider mapped from a saved sample response, no network. Greenhouse jobs are dated by `first_published`, not `updated_at` (which changes whenever the ad is edited).
 - `CareersLinkTest`: careers page links of each board become the right board and company id (trailing slashes, query strings, capitals); LinkedIn, plain websites, a link to a single job and broken text are refused.
 - `CompanyServiceTest`: a company is saved only after its board confirms it; unknown company, already tracked (also when two requests race) and unsupported links are refused before saving.
 - `CompanyControllerTest`: `201`/`400`/`409`/`502`/`404` answers as problem details, and adding or removing needs the API key.
