@@ -35,7 +35,7 @@ function emptyText(noneTicked: boolean, firstLoad: FirstLoad, loadedInBucket: nu
   if (noneTicked) return 'Tick a status to see jobs.'
   if (firstLoad === 'loading') return 'Loading…'
   if (firstLoad === 'failed') return 'Could not load the jobs.'
-  if (loadedInBucket > 0) return 'No jobs here match your search or company.'
+  if (loadedInBucket > 0) return 'No jobs here match your filters.'
   return 'Nothing here yet.'
 }
 

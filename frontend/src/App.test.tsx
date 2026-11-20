@@ -114,7 +114,7 @@ describe('App', () => {
 
     await userEvent.type(screen.getByRole('searchbox', { name: 'Search' }), 'nothing like this')
 
-    expect(within(section('Strong match')).getByText('No jobs here match your search or company.')).toBeInTheDocument()
+    expect(within(section('Strong match')).getByText('No jobs here match your filters.')).toBeInTheDocument()
     expect(within(section('Stretch')).getByText('Nothing here yet.')).toBeInTheDocument()
   })
 

@@ -20,7 +20,16 @@ export interface Job {
   status: JobStatus
   firstSeenAt: string
   lastSeenAt: string
+  /** What it pays, when its board or ad says; never converted between periods or currencies. */
+  payMin?: number | null
+  payMax?: number | null
+  payCurrency?: string | null
+  payPeriod?: PayPeriod | null
+  /** The sentence the pay came from, as written. */
+  payText?: string | null
 }
+
+export type PayPeriod = 'YEAR' | 'MONTH' | 'DAY' | 'HOUR'
 
 export type GroupedJobs = Record<Bucket, Job[]>
 

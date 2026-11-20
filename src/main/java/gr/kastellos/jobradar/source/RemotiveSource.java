@@ -3,6 +3,7 @@ package gr.kastellos.jobradar.source;
 import com.fasterxml.jackson.databind.JsonNode;
 import gr.kastellos.jobradar.config.RadarProperties;
 import gr.kastellos.jobradar.domain.JobPosting;
+import gr.kastellos.jobradar.matching.PayParser;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -72,7 +73,8 @@ public class RemotiveSource implements JobSource {
                     true,
                     Json.text(j, "url"),
                     Json.plain(Json.text(j, "description")),
-                    Json.instant(j, "publication_date")));
+                    Json.instant(j, "publication_date"),
+                    PayParser.fromSalaryField(Json.text(j, "salary"))));
         }
         return out;
     }

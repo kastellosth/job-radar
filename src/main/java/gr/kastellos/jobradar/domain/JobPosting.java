@@ -17,7 +17,14 @@ public record JobPosting(
         boolean remote,
         String url,
         String description,
-        Instant postedAt) {
+        Instant postedAt,
+        Pay pay) {
+
+    /** A posting whose board has no pay field; the pay, if any, is read from its text at ingest. */
+    public JobPosting(String source, String externalId, String company, String title, String location,
+                      boolean remote, String url, String description, Instant postedAt) {
+        this(source, externalId, company, title, location, remote, url, description, postedAt, null);
+    }
 
     /**
      * The same job is often listed on several boards, or reposted with a new id.

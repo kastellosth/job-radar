@@ -49,6 +49,14 @@ export function Filters({ statuses, onStatusesChange, view, onViewChange, compan
           <option value="newest">newest</option>
         </select>
       </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={view.paidOnly}
+          onChange={(e) => onViewChange({ ...view, paidOnly: e.target.checked })}
+        />{' '}
+        only jobs that show pay
+      </label>
       <fieldset>
         <legend>Status</legend>
         {STATUSES.map((status) => (

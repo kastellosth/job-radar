@@ -256,6 +256,6 @@ public class SuccessFactorsSource extends CompanyBoardSource {
             }
         }
         return new JobPosting(p.source(), p.externalId(), p.company(), p.title(), p.location(), p.remote(), p.url(),
-                description == null ? p.description() : description.text(), posted);
+                description == null ? p.description() : description.text(), posted, p.pay());
     }
 }

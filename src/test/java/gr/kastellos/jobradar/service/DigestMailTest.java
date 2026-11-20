@@ -55,4 +55,19 @@ class DigestMailTest {
                 .contains("&lt;script&gt;", "A&amp;B");
         assertThat(mail.text()).doesNotContain("javascript:");
     }
+
+    @Test
+    void showsThePayWhenTheAdGivesIt() {
+        Job paid = job("Junior Java Developer", "Acme", "https://acme.example/1", null);
+        paid.paid(new gr.kastellos.jobradar.domain.Pay(30000, 40000, "EUR",
+                gr.kastellos.jobradar.domain.Pay.Period.YEAR, "gross"));
+        Job monthly = job("Junior QA Engineer", "Acme", "https://acme.example/2", null);
+        monthly.paid(new gr.kastellos.jobradar.domain.Pay(1200, 1200, "EUR",
+                gr.kastellos.jobradar.domain.Pay.Period.MONTH, "gross"));
+
+        DigestMail mail = DigestMail.of(List.of(paid, monthly, job("Data Engineer", "Acme", "https://a.example/3", null)), "");
+
+        assertThat(mail.text()).contains("· €30,000–€40,000 a year ·", "· €1,200 a month ·");
+        assertThat(mail.text().lines().filter(l -> l.contains("Acme ·") && l.contains("a year")).count()).isEqualTo(1);
+    }
 }

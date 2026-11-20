@@ -30,7 +30,9 @@ public record DigestMail(String subject, String text, String html) {
         for (Job job : jobs) {
             String where = job.isRemote() ? "Remote" : nullToEmpty(job.getLocation());
             String when = DAY.format(job.getPostedAt() != null ? job.getPostedAt() : job.getFirstSeenAt());
-            String line = job.getCompany() + " · " + where + " · posted " + when + " · score " + job.getScore();
+            String pay = pay(job);
+            String line = job.getCompany() + " · " + where + " · posted " + when
+                    + (pay == null ? "" : " · " + pay) + " · score " + job.getScore();
 
             text.append("- ").append(job.getTitle()).append('\n')
                     .append("  ").append(line).append('\n');
@@ -57,6 +59,29 @@ public record DigestMail(String subject, String text, String html) {
             html.append("<p><a href=\"").append(HtmlUtils.htmlEscape(dashboard)).append("\">Open the dashboard</a></p>\n");
         }
         return new DigestMail(subject, text.toString(), html.toString());
+    }
+
+    /** "€30,000–€40,000 a year", as on the dashboard; null when the ad gives no pay. */
+    static String pay(Job job) {
+        if (job.getPayMin() == null || job.getPayPeriod() == null) {
+            return null;
+        }
+        String symbol = switch (job.getPayCurrency()) {
+            case "EUR" -> "€";
+            case "USD" -> "$";
+            case "GBP" -> "£";
+            default -> job.getPayCurrency() + " ";
+        };
+        String min = symbol + String.format(Locale.UK, "%,d", job.getPayMin());
+        String range = job.getPayMax() == null || job.getPayMax().equals(job.getPayMin())
+                ? min : min + "–" + symbol + String.format(Locale.UK, "%,d", job.getPayMax());
+        String per = switch (job.getPayPeriod()) {
+            case YEAR -> "a year";
+            case MONTH -> "a month";
+            case DAY -> "a day";
+            case HOUR -> "an hour";
+        };
+        return range + " " + per;
     }
 
     /** Only http(s): a job board must not be able to put a "javascript:" link in the email. */

@@ -165,4 +165,23 @@ class IngestServiceTest {
         verify(repo).save(job.capture());
         assertThat(job.getValue().getBoard()).isEqualTo("workable:acme");
     }
+
+    @Test
+    void readsThePayFromTheAdWhenTheBoardHasNoPayField() {
+        when(scorer.score(any())).thenReturn(new MatchResult(10, Bucket.STRONG, List.of()));
+        when(repo.findByFingerprint(any())).thenReturn(Optional.empty());
+        JobPosting withPay = new JobPosting("workable", "1", "Acme", "Junior Java Developer", "Athens", false,
+                "https://x/1", "Hybrid. Gross annual salary €24,000 - €28,000, 14 salaries.", null);
+        var service = new IngestService(List.of(source("workable", List.of(withPay))), scorer, repo, health, clock,
+                TransactionOperations.withoutTransaction());
+
+        service.run();
+
+        ArgumentCaptor<Job> job = ArgumentCaptor.forClass(Job.class);
+        verify(repo).save(job.capture());
+        assertThat(job.getValue().getPayMin()).isEqualTo(24000);
+        assertThat(job.getValue().getPayMax()).isEqualTo(28000);
+        assertThat(job.getValue().getPayPeriod()).isEqualTo(gr.kastellos.jobradar.domain.Pay.Period.YEAR);
+        assertThat(job.getValue().getPayText()).isEqualTo("Gross annual salary €24,000 - €28,000, 14 salaries.");
+    }
 }

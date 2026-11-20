@@ -223,6 +223,7 @@ public class WorkdaySource extends CompanyBoardSource {
                 remoteType != null && remoteType.toLowerCase().contains("remote"),
                 url != null && url.startsWith("https://") ? url : p.url(),
                 Json.plain(Json.text(info, "jobDescription")),
-                posted);
+                posted,
+                p.pay());
     }
 }

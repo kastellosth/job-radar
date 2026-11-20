@@ -66,6 +66,14 @@ public class Job {
     /** The board it was last listed on, e.g. "workable:learnworlds"; see BoardHealth. */
     private String board;
 
+    /** What it pays, when the board or the ad says; see Pay. All null when it does not. */
+    private Integer payMin;
+    private Integer payMax;
+    private String payCurrency;
+    @Enumerated(EnumType.STRING)
+    private Pay.Period payPeriod;
+    private String payText;
+
     protected Job() {
     }
 
@@ -119,6 +127,27 @@ public class Job {
     public String getBoard() { return board; }
 
     public void listedOn(String board) { this.board = board; }
+
+    public Integer getPayMin() { return payMin; }
+    public Integer getPayMax() { return payMax; }
+    public String getPayCurrency() { return payCurrency; }
+    public Pay.Period getPayPeriod() { return payPeriod; }
+    public String getPayText() { return payText; }
+
+    /**
+     * The pay this read found. A read that found none keeps what an earlier one found: some boards give the full
+     * ad (and so the pay) only on some runs, when its page could be read.
+     */
+    public void paid(Pay pay) {
+        if (pay == null) {
+            return;
+        }
+        this.payMin = pay.min();
+        this.payMax = pay.max();
+        this.payCurrency = pay.currency();
+        this.payPeriod = pay.period();
+        this.payText = pay.text();
+    }
 
     public void setStatus(JobStatus status) { this.status = status; }
 }

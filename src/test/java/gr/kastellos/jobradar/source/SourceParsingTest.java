@@ -169,6 +169,17 @@ class SourceParsingTest {
     }
 
     @Test
+    void leverAndRemotiveGiveTheirOwnPayFields() throws IOException {
+        assertThat(LeverSource.parse("acme", fixture("lever.json")).get(0).pay())
+                .isEqualTo(new gr.kastellos.jobradar.domain.Pay(30000, 40000, "EUR",
+                        gr.kastellos.jobradar.domain.Pay.Period.YEAR, ""));
+        var remotive = RemotiveSource.parse(fixture("remotive.json"));
+        assertThat(remotive.get(0).pay().min()).isEqualTo(35300);
+        assertThat(remotive.get(0).pay().max()).isEqualTo(52000);
+        assertThat(remotive.get(1).pay()).as("no salary field: read from the ad at ingest").isNull();
+    }
+
+    @Test
     void greenhouseUnescapesHtmlContent() throws IOException {
         List<JobPosting> jobs = GreenhouseSource.parse("acme", fixture("greenhouse.json"));
 

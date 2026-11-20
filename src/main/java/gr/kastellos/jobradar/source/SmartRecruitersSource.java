@@ -92,7 +92,7 @@ public class SmartRecruitersSource extends CompanyBoardSource {
                 ? adText
                 : p.description() + "\n" + adText;
         return new JobPosting(p.source(), p.externalId(), p.company(), p.title(), p.location(), p.remote(),
-                p.url(), description, p.postedAt());
+                p.url(), description, p.postedAt(), p.pay());
     }
 
     static List<JobPosting> parse(String companyId, JsonNode body) {

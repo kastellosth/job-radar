@@ -1,5 +1,5 @@
 import type { Job, JobStatus } from '../api'
-import { formatDate, jobDate, timeAgo } from '../jobView'
+import { formatDate, formatPay, jobDate, timeAgo } from '../jobView'
 import { safeUrl } from '../safeUrl'
 
 const ACTIONS: JobStatus[] = ['SEEN', 'APPLIED', 'REJECTED', 'HIDDEN']
@@ -22,6 +22,7 @@ interface Props {
 export function JobCard({ job, onStatus, onOpen }: Props) {
   const where = job.remote ? 'Remote' : (job.location ?? '')
   const date = jobDate(job)
+  const pay = formatPay(job)
   return (
     <article className={`job bucket-${job.bucket} ${job.status}`} aria-label={job.title}>
       <div className="title">
@@ -47,6 +48,11 @@ export function JobCard({ job, onStatus, onOpen }: Props) {
         {/* Without a date from the board, the day the radar first saw the job is the best we know. */}
         {job.postedAt ? 'Posted' : 'Found'} <time dateTime={date}>{formatDate(date)}</time> · {timeAgo(date)}
       </div>
+      {pay && (
+        <div className="pay" title={job.payText ?? undefined}>
+          {pay}
+        </div>
+      )}
       {job.reasons && <div className="reasons">{job.reasons}</div>}
       <div className="actions">
         {ACTIONS.map((status) => (

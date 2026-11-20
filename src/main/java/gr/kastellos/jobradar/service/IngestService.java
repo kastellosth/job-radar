@@ -7,6 +7,7 @@ import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.JobRepository;
 import gr.kastellos.jobradar.domain.MatchResult;
 import gr.kastellos.jobradar.matching.JobScorer;
+import gr.kastellos.jobradar.matching.PayParser;
 import gr.kastellos.jobradar.source.BoardRead;
 import gr.kastellos.jobradar.source.JobSource;
 import org.slf4j.Logger;
@@ -141,6 +142,9 @@ public class IngestService {
                 inserted++;
             }
             job.listedOn(boardOf.get(posting.fingerprint()));
+            // The board's own pay field when it has one, otherwise what the ad says.
+            job.paid(posting.pay() != null ? posting.pay()
+                    : PayParser.find(posting.title() + "\n" + (posting.description() == null ? "" : posting.description())));
         }
         return new IngestReport(fetched, unique.size(), inserted, updated);
     }

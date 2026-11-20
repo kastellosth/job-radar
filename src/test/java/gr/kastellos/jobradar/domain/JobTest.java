@@ -36,4 +36,15 @@ class JobTest {
 
         assertThat(job.getPostedAt()).isEqualTo(Instant.parse("2026-11-11T22:00:00Z"));
     }
+
+    @Test
+    void aReadWithoutPayKeepsThePayAnEarlierReadFound() {
+        Job job = Job.from(posting(null), MATCH, SEEN);
+        job.paid(new Pay(1200, 1500, "EUR", Pay.Period.MONTH, "Μικτές μηνιαίες αποδοχές: 1.200 - 1.500 €"));
+
+        job.paid(null);
+
+        assertThat(job.getPayMin()).isEqualTo(1200);
+        assertThat(job.getPayPeriod()).isEqualTo(Pay.Period.MONTH);
+    }
 }

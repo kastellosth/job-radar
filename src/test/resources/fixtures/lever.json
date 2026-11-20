@@ -5,7 +5,17 @@
     "hostedUrl": "https://jobs.lever.co/acme/a1b2c3",
     "createdAt": 1762790400000,
     "workplaceType": "remote",
-    "categories": { "location": "Europe", "commitment": "Full-time", "team": "Engineering" },
-    "descriptionPlain": "TypeScript, React, Node.js."
+    "categories": {
+      "location": "Europe",
+      "commitment": "Full-time",
+      "team": "Engineering"
+    },
+    "descriptionPlain": "TypeScript, React, Node.js.",
+    "salaryRange": {
+      "min": 30000,
+      "max": 40000,
+      "currency": "EUR",
+      "interval": "per-year-salary"
+    }
   }
 ]

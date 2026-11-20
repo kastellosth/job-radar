@@ -100,6 +100,6 @@ public abstract class CompanyBoardSource implements JobSource {
             return p;
         }
         return new JobPosting(p.source(), p.externalId(), company.getName(), p.title(), p.location(), p.remote(),
-                p.url(), p.description(), p.postedAt());
+                p.url(), p.description(), p.postedAt(), p.pay());
     }
 }

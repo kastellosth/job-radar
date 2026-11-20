@@ -9,9 +9,11 @@ export interface ViewOptions {
   query: string
   company: string
   sort: SortOrder
+  /** Only jobs whose board or ad says what they pay. */
+  paidOnly: boolean
 }
 
-export const DEFAULT_VIEW: ViewOptions = { query: '', company: ALL, sort: 'best' }
+export const DEFAULT_VIEW: ViewOptions = { query: '', company: ALL, sort: 'best', paidOnly: false }
 
 export interface CompanyCount {
   name: string
@@ -36,6 +38,7 @@ export function visibleJobs(jobs: readonly Job[], view: ViewOptions): Job[] {
   const words = plain(view.query).split(/\s+/).filter(Boolean)
   const shown = jobs.filter((job) => {
     if (view.company !== ALL && job.company !== view.company) return false
+    if (view.paidOnly && job.payMin == null) return false
     const text = plain(`${job.title} ${job.company}`)
     return words.every((w) => text.includes(w))
   })
@@ -88,4 +91,20 @@ export function timeAgo(iso: string, now: number = Date.now()): string {
   if (days < 30) return relative.format(-days, 'day')
   if (days < 365) return relative.format(-Math.floor(days / 30), 'month')
   return relative.format(-Math.floor(days / 365), 'year')
+}
+
+const PER: Record<string, string> = { YEAR: 'a year', MONTH: 'a month', DAY: 'a day', HOUR: 'an hour' }
+
+/** "€30,000–€40,000 a year", "€1,200 a month"; null when the job says nothing about pay. */
+export function formatPay(job: Job): string | null {
+  if (job.payMin == null || !job.payCurrency || !job.payPeriod) return null
+  let money: Intl.NumberFormat
+  try {
+    money = new Intl.NumberFormat('en-GB', { style: 'currency', currency: job.payCurrency, maximumFractionDigits: 0 })
+  } catch {
+    return null // a currency code the browser does not know
+  }
+  const max = job.payMax ?? job.payMin
+  const amount = max === job.payMin ? money.format(job.payMin) : `${money.format(job.payMin)}–${money.format(max)}`
+  return `${amount} ${PER[job.payPeriod]}`
 }

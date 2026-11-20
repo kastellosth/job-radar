@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Job } from './api'
-import { ALL, DEFAULT_VIEW, companiesIn, formatDate, timeAgo, visibleJobs } from './jobView'
+import { ALL, DEFAULT_VIEW, companiesIn, formatDate, formatPay, timeAgo, visibleJobs } from './jobView'
 
 function job(id: number, title: string, company: string, postedAt: string | null, firstSeenAt = '2026-11-01T00:00:00Z'): Job {
   return {
@@ -41,7 +41,7 @@ describe('visibleJobs', () => {
 
   it('does not change the list it was given', () => {
     const copy = [...JOBS]
-    visibleJobs(JOBS, { query: '', company: ALL, sort: 'newest' })
+    visibleJobs(JOBS, { ...DEFAULT_VIEW, company: ALL, sort: 'newest' })
     expect(JOBS).toEqual(copy)
   })
 })
@@ -83,5 +83,22 @@ describe('formatDate', () => {
   it('writes the day in Athens time', () => {
     expect(formatDate('2026-11-16T09:00:00Z')).toBe('16 Nov 2026')
     expect(formatDate('2026-11-15T22:30:00Z')).toBe('16 Nov 2026')
+  })
+})
+
+describe('pay', () => {
+  const paid = { ...JOBS[0], payMin: 30000, payMax: 40000, payCurrency: 'EUR', payPeriod: 'YEAR' as const }
+  const monthly = { ...JOBS[1], payMin: 1200, payMax: 1200, payCurrency: 'EUR', payPeriod: 'MONTH' as const }
+
+  it('writes a range or one amount, with its period', () => {
+    expect(formatPay(paid)).toBe('€30,000–€40,000 a year')
+    expect(formatPay(monthly)).toBe('€1,200 a month')
+    expect(formatPay({ ...paid, payCurrency: 'USD', payPeriod: 'HOUR', payMin: 14, payMax: 14 })).toBe('US$14 an hour')
+    expect(formatPay(JOBS[2])).toBeNull()
+  })
+
+  it('keeps only the jobs that show pay when asked', () => {
+    expect(titles(visibleJobs([paid, monthly, JOBS[2]], { ...DEFAULT_VIEW, paidOnly: true }))).toEqual([1, 2])
+    expect(titles(visibleJobs([paid, monthly, JOBS[2]], DEFAULT_VIEW))).toEqual([1, 2, 3])
   })
 })

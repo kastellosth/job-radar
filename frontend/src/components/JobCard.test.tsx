@@ -77,4 +77,23 @@ describe('JobCard', () => {
 
     expect(onOpen).toHaveBeenCalledWith(job)
   })
+
+  it('shows the pay with the sentence it came from, and nothing when the job does not say', () => {
+    const paid: Job = {
+      ...job,
+      payMin: 1200,
+      payMax: 1500,
+      payCurrency: 'EUR',
+      payPeriod: 'MONTH',
+      payText: 'Μικτές μηνιαίες αποδοχές: 1.200 - 1.500 €',
+    }
+    const { container, rerender } = render(<JobCard job={paid} onStatus={noop} onOpen={noop} />)
+
+    const pay = container.querySelector('.pay')
+    expect(pay).toHaveTextContent('€1,200–€1,500 a month')
+    expect(pay).toHaveAttribute('title', 'Μικτές μηνιαίες αποδοχές: 1.200 - 1.500 €')
+
+    rerender(<JobCard job={job} onStatus={noop} onOpen={noop} />)
+    expect(container.querySelector('.pay')).toBeNull()
+  })
 })
