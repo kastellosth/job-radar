@@ -1,7 +1,10 @@
 package gr.kastellos.jobradar.service;
 
+import gr.kastellos.jobradar.domain.BoardHealth;
+import gr.kastellos.jobradar.domain.BoardHealthRepository;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.Provider;
+import gr.kastellos.jobradar.domain.TrackedCompany;
 import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
 import gr.kastellos.jobradar.source.CompanyBoardSource;
 import org.junit.jupiter.api.Test;
@@ -13,6 +16,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,13 +32,14 @@ class CompanyServiceTest {
     private static final Instant NOW = Instant.parse("2026-11-19T10:00:00Z");
 
     private final TrackedCompanyRepository repo = mock(TrackedCompanyRepository.class);
+    private final BoardHealthRepository health = mock(BoardHealthRepository.class);
     private final CompanyBoardSource workable = mock(CompanyBoardSource.class);
     private final CompanyService service;
 
     CompanyServiceTest() {
         when(workable.provider()).thenReturn(Provider.WORKABLE);
         when(repo.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
-        service = new CompanyService(repo, List.of(workable), Clock.fixed(NOW, ZoneOffset.UTC));
+        service = new CompanyService(repo, health, List.of(workable), Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static JobPosting job(String company) {
@@ -112,9 +117,34 @@ class CompanyServiceTest {
 
     @Test
     void removingAnUnknownCompanyIsNotFound() {
-        when(repo.existsById(99L)).thenReturn(false);
+        when(repo.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.remove(99L)).isInstanceOf(java.util.NoSuchElementException.class);
-        verify(repo, never()).deleteById(any());
+        verify(repo, never()).delete(any());
+    }
+
+    @Test
+    void removingACompanyForgetsItsBoardsHealth() {
+        TrackedCompany acme = TrackedCompany.of(Provider.WORKABLE, "acme", "Acme", NOW);
+        when(repo.findById(5L)).thenReturn(Optional.of(acme));
+
+        service.remove(5L);
+
+        verify(repo).delete(acme);
+        verify(health).deleteById("workable:acme");
+    }
+
+    @Test
+    void listsEachCompanyWithItsBoardsHealth() {
+        TrackedCompany acme = TrackedCompany.of(Provider.WORKABLE, "acme", "Acme", NOW);
+        TrackedCompany fresh = TrackedCompany.of(Provider.WORKABLE, "fresh", "Fresh", NOW);
+        BoardHealth acmeHealth = BoardHealth.of("workable:acme");
+        acmeHealth.read(4, NOW);
+        when(repo.findAllByOrderByNameAsc()).thenReturn(List.of(acme, fresh));
+        when(health.findAll()).thenReturn(List.of(acmeHealth));
+
+        assertThat(service.list()).satisfiesExactly(
+                a -> assertThat(a.health()).isSameAs(acmeHealth),
+                f -> assertThat(f.health()).isNull());
     }
 }

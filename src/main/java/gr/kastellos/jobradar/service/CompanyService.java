@@ -1,5 +1,7 @@
 package gr.kastellos.jobradar.service;
 
+import gr.kastellos.jobradar.domain.BoardHealth;
+import gr.kastellos.jobradar.domain.BoardHealthRepository;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.Provider;
 import gr.kastellos.jobradar.domain.TrackedCompany;
@@ -24,11 +26,14 @@ import java.util.stream.Collectors;
 public class CompanyService {
 
     private final TrackedCompanyRepository companies;
+    private final BoardHealthRepository health;
     private final Map<Provider, CompanyBoardSource> boards;
     private final Clock clock;
 
-    public CompanyService(TrackedCompanyRepository companies, List<CompanyBoardSource> boards, Clock clock) {
+    public CompanyService(TrackedCompanyRepository companies, BoardHealthRepository health,
+                          List<CompanyBoardSource> boards, Clock clock) {
         this.companies = companies;
+        this.health = health;
         this.boards = boards.stream().collect(Collectors.toMap(CompanyBoardSource::provider, Function.identity()));
         this.clock = clock;
     }
@@ -44,9 +49,17 @@ public class CompanyService {
         }
     }
 
+    /** A tracked company and how the reads of its board went; health is null before its first fetch. */
+    public record Tracked(TrackedCompany company, BoardHealth health) {
+    }
+
     @Transactional(readOnly = true)
-    public List<TrackedCompany> list() {
-        return companies.findAllByOrderByNameAsc();
+    public List<Tracked> list() {
+        Map<String, BoardHealth> byBoard = health.findAll().stream()
+                .collect(Collectors.toMap(BoardHealth::getBoard, Function.identity()));
+        return companies.findAllByOrderByNameAsc().stream()
+                .map(c -> new Tracked(c, byBoard.get(c.board())))
+                .toList();
     }
 
     /**
@@ -93,11 +106,12 @@ public class CompanyService {
                 .collect(Collectors.joining(" "));
     }
 
+    /** Its jobs stay; with its health gone they leave the dashboard once unlisted for radar.hide-unlisted-after. */
     @Transactional
     public void remove(long id) {
-        if (!companies.existsById(id)) {
-            throw new NoSuchElementException("company " + id + " not found");
-        }
-        companies.deleteById(id);
+        TrackedCompany company = companies.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("company " + id + " not found"));
+        companies.delete(company);
+        health.deleteById(company.board());
     }
 }

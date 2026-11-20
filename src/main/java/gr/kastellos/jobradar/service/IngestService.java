@@ -1,10 +1,13 @@
 package gr.kastellos.jobradar.service;
 
+import gr.kastellos.jobradar.domain.BoardHealth;
+import gr.kastellos.jobradar.domain.BoardHealthRepository;
 import gr.kastellos.jobradar.domain.Job;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.JobRepository;
 import gr.kastellos.jobradar.domain.MatchResult;
 import gr.kastellos.jobradar.matching.JobScorer;
+import gr.kastellos.jobradar.source.BoardRead;
 import gr.kastellos.jobradar.source.JobSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +17,7 @@ import org.springframework.transaction.support.TransactionOperations;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,15 +38,17 @@ public class IngestService {
     private final List<JobSource> sources;
     private final JobScorer scorer;
     private final JobRepository jobs;
+    private final BoardHealthRepository health;
     private final Clock clock;
     private final TransactionOperations tx;
     private final AtomicBoolean running = new AtomicBoolean();
 
-    public IngestService(List<JobSource> sources, JobScorer scorer, JobRepository jobs, Clock clock,
-                         TransactionOperations tx) {
+    public IngestService(List<JobSource> sources, JobScorer scorer, JobRepository jobs, BoardHealthRepository health,
+                         Clock clock, TransactionOperations tx) {
         this.sources = sources;
         this.scorer = scorer;
         this.jobs = jobs;
+        this.health = health;
         this.clock = clock;
         this.tx = tx;
     }
@@ -74,48 +80,67 @@ public class IngestService {
         }
         try {
             Instant now = clock.instant();
-            Map<String, JobPosting> unique = new LinkedHashMap<>();
-            int fetched = fetchAll(unique);
-            return tx.execute(status -> save(unique, fetched, now));
+            List<BoardRead> reads = fetchAll();
+            return tx.execute(status -> save(reads, now));
         } finally {
             running.set(false);
         }
     }
 
-    /** Fills {@code unique} with every source's postings, one per job, and returns how many came back in total. */
-    private int fetchAll(Map<String, JobPosting> unique) {
-        int fetched = 0;
-        // Same job from two sources (or twice from one) collapses to one entry; first one wins.
+    /** Every board of every source, failed reads included. A source that throws instead is only logged. */
+    private List<BoardRead> fetchAll() {
+        List<BoardRead> reads = new ArrayList<>();
         for (JobSource source : sources) {
             try {
-                List<JobPosting> postings = source.fetch();
-                fetched += postings.size();
-                for (JobPosting p : postings) {
-                    if (p.title() != null && p.url() != null) {
-                        unique.putIfAbsent(p.fingerprint(), p);
-                    }
-                }
-                log.info("Source {} returned {} postings", source.name(), postings.size());
+                List<BoardRead> sourceReads = source.fetch();
+                reads.addAll(sourceReads);
+                log.info("Source {} returned {} postings from {} boards ({} failed)", source.name(),
+                        sourceReads.stream().mapToInt(r -> r.postings().size()).sum(), sourceReads.size(),
+                        sourceReads.stream().filter(BoardRead::failed).count());
             } catch (RuntimeException e) {
                 log.warn("Source {} failed, skipping: {}", source.name(), e.getMessage());
             }
         }
-        return fetched;
+        return reads;
     }
 
-    private IngestReport save(Map<String, JobPosting> unique, int fetched, Instant now) {
+    private IngestReport save(List<BoardRead> reads, Instant now) {
+        int fetched = 0;
+        // Same job on two boards (or twice on one) collapses to one entry; the first board wins.
+        Map<String, JobPosting> unique = new LinkedHashMap<>();
+        Map<String, String> boardOf = new LinkedHashMap<>();
+        for (BoardRead read : reads) {
+            BoardHealth h = health.findById(read.board()).orElseGet(() -> BoardHealth.of(read.board()));
+            if (read.failed()) {
+                h.failed(read.error(), now);
+            } else {
+                h.read(read.postings().size(), now);
+            }
+            health.save(h);
+
+            fetched += read.postings().size();
+            for (JobPosting p : read.postings()) {
+                if (p.title() != null && p.url() != null && unique.putIfAbsent(p.fingerprint(), p) == null) {
+                    boardOf.put(p.fingerprint(), read.board());
+                }
+            }
+        }
+
         int inserted = 0;
         int updated = 0;
         for (JobPosting posting : unique.values()) {
             MatchResult match = scorer.score(posting);
             var existing = jobs.findByFingerprint(posting.fingerprint());
+            Job job;
             if (existing.isPresent()) {
-                existing.get().refresh(posting, match, now);
+                job = existing.get();
+                job.refresh(posting, match, now);
                 updated++;
             } else {
-                jobs.save(Job.from(posting, match, now));
+                job = jobs.save(Job.from(posting, match, now));
                 inserted++;
             }
+            job.listedOn(boardOf.get(posting.fingerprint()));
         }
         return new IngestReport(fetched, unique.size(), inserted, updated);
     }

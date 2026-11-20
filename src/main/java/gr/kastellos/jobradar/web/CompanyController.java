@@ -1,5 +1,6 @@
 package gr.kastellos.jobradar.web;
 
+import gr.kastellos.jobradar.domain.BoardHealth;
 import gr.kastellos.jobradar.domain.TrackedCompany;
 import gr.kastellos.jobradar.service.CompanyService;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientException;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -30,9 +32,20 @@ public class CompanyController {
         this.companies = companies;
     }
 
-    public record CompanyView(long id, String provider, String slug, String name) {
-        static CompanyView of(TrackedCompany c) {
-            return new CompanyView(c.getId(), c.getProvider().displayName(), c.getSlug(), c.getName());
+    /**
+     * @param lastReadAt   the last read of its board that worked; null before the first fetch
+     * @param jobs         jobs that read listed
+     * @param failingSince the first failed read since then; null while it works
+     * @param error        why the last read failed
+     */
+    public record CompanyView(long id, String provider, String slug, String name,
+                              Instant lastReadAt, Integer jobs, Instant failingSince, String error) {
+        static CompanyView of(TrackedCompany c, BoardHealth h) {
+            return new CompanyView(c.getId(), c.getProvider().displayName(), c.getSlug(), c.getName(),
+                    h == null ? null : h.getLastOkAt(),
+                    h == null ? null : h.getJobCount(),
+                    h == null ? null : h.getFailingSince(),
+                    h == null ? null : h.getLastError());
         }
     }
 
@@ -44,7 +57,7 @@ public class CompanyController {
 
     @GetMapping
     public List<CompanyView> list() {
-        return companies.list().stream().map(CompanyView::of).toList();
+        return companies.list().stream().map(t -> CompanyView.of(t.company(), t.health())).toList();
     }
 
     /** Example body: {"url": "https://apply.workable.com/learnworlds"} */
@@ -52,7 +65,7 @@ public class CompanyController {
     @ResponseStatus(HttpStatus.CREATED)
     public AddedCompany add(@RequestBody @Valid AddCompany request) {
         CompanyService.Added added = companies.add(request.url());
-        return new AddedCompany(CompanyView.of(added.company()), added.openJobs());
+        return new AddedCompany(CompanyView.of(added.company(), null), added.openJobs());
     }
 
     /**

@@ -1,5 +1,28 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { addCompany, errorText, fetchCompanies, removeCompany, type Company } from '../api'
+import { formatDate, timeAgo } from '../jobView'
+
+/** How the last reads of the company's board went, in a few words. */
+function Health({ company }: { company: Company }) {
+  if (company.failingSince) {
+    return (
+      <span className="health failing" title={company.error ?? undefined}>
+        failing since {formatDate(company.failingSince)}
+        {company.error && `: ${company.error}`}
+        {company.lastReadAt && ` · its ${company.jobs ?? 0} jobs stay listed`}
+      </span>
+    )
+  }
+  if (!company.lastReadAt) {
+    return <span className="health">not read yet</span>
+  }
+  const jobs = company.jobs === 1 ? '1 job' : `${company.jobs ?? 0} jobs`
+  return (
+    <span className="health">
+      read {timeAgo(company.lastReadAt)} · {jobs}
+    </span>
+  )
+}
 
 interface Props {
   apiKey: string
@@ -50,9 +73,14 @@ export function CompaniesPanel({ apiKey }: Props) {
     }
   }
 
+  const failing = companies.filter((c) => c.failingSince).length
+
   return (
     <details className="companies">
-      <summary>Companies ({companies.length})</summary>
+      <summary>
+        Companies ({companies.length})
+        {failing > 0 && <span className="failing-count"> · {failing} failing</span>}
+      </summary>
       <form onSubmit={add}>
         <input
           type="url"
@@ -77,6 +105,8 @@ export function CompaniesPanel({ apiKey }: Props) {
           <li key={c.id}>
             <span>
               {c.name} <span className="muted">· {c.provider}</span>
+              <br />
+              <Health company={c} />
             </span>
             <button type="button" onClick={() => remove(c)} aria-label={`Remove ${c.name}`}>
               remove

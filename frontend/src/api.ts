@@ -69,12 +69,19 @@ export function ingestNow(apiKey: string): Promise<IngestReport> {
   return call('/api/ingest', { method: 'POST', headers: { 'X-Api-Key': apiKey } })
 }
 
-/** A company whose job board is read on every run. */
+/** A company whose job board is read on every run, and how the last reads of it went. */
 export interface Company {
   id: number
   provider: string
   slug: string
   name: string
+  /** The last read that worked; null before the first fetch. */
+  lastReadAt: string | null
+  /** Jobs that read listed. */
+  jobs: number | null
+  /** The first failed read since then; null while the board works. */
+  failingSince: string | null
+  error: string | null
 }
 
 export interface AddedCompany {

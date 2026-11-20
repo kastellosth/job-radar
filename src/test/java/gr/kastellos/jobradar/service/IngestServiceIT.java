@@ -1,5 +1,6 @@
 package gr.kastellos.jobradar.service;
 
+import gr.kastellos.jobradar.domain.BoardHealthRepository;
 import gr.kastellos.jobradar.domain.Bucket;
 import gr.kastellos.jobradar.domain.Job;
 import gr.kastellos.jobradar.domain.JobPosting;
@@ -68,6 +69,8 @@ class IngestServiceIT {
     @Autowired
     private TrackedCompanyRepository companies;
     @Autowired
+    private BoardHealthRepository health;
+    @Autowired
     private StubSource boardA;
     @Autowired
     private StubSource boardB;
@@ -86,6 +89,7 @@ class IngestServiceIT {
     void cleanStart() {
         jobs.deleteAll();
         companies.deleteAll();
+        health.deleteAll();
         boardA.willReturn();
         boardB.willReturn();
         clock.set(DAY_1);
@@ -142,5 +146,25 @@ class IngestServiceIT {
 
         assertThat(report.inserted()).isEqualTo(1);
         assertThat(jobs.count()).isEqualTo(1);
+    }
+
+    @Test
+    void aBoardThatStaysDownKeepsItsJobsOnTheDashboardButAWorkingOneDropsClosedJobs() {
+        boardA.willReturn(junior("board-a", "Acme S.A.", "Java"));
+        boardB.willReturn(junior("board-b", "Beta Ltd", "Java"));
+        ingest.run();
+
+        // A week later: board A is down every time, board B works but lists another job instead of its first.
+        boardA.willFail(new IllegalStateException("HTTP 503"));
+        boardB.willReturn(junior("board-b", "Gamma Ltd", "Java"));
+        clock.set(DAY_1.plus(java.time.Duration.ofDays(7)));
+        ingest.run();
+
+        var shown = jobs.dashboard(java.util.EnumSet.of(Bucket.STRONG, Bucket.GOOD, Bucket.STRETCH),
+                java.util.EnumSet.of(JobStatus.NEW, JobStatus.SEEN, JobStatus.APPLIED),
+                clock.instant().minus(java.time.Duration.ofDays(3)));
+        assertThat(shown).extracting(Job::getCompany).containsExactlyInAnyOrder("Acme S.A.", "Gamma Ltd");
+        assertThat(health.findById("board-a").orElseThrow().isFailing()).isTrue();
+        assertThat(health.findById("board-b").orElseThrow().isFailing()).isFalse();
     }
 }

@@ -38,8 +38,8 @@ radar:
   # Spring cron (sec min hour day month weekday), Europe/Athens time. Default: 08:00 and 18:00 every day.
   schedule: "0 0 8,18 * * *"
 
-  # A job that no board has listed for this long is taken as closed and hidden (jobs he applied to stay).
-  # Longer than one run, so a board that is down for a day does not empty the list.
+  # A job its board has been read fine for this long without listing it is taken as closed and hidden (jobs he
+  # applied to stay). A board that is failing keeps its jobs; see board_health and the Companies panel.
   hide-unlisted-after: 3d
 
   # Weekly email of new STRONG matches. Off while DIGEST_TO is empty.

@@ -63,6 +63,9 @@ public class Job {
     @Column(nullable = false)
     private Instant lastSeenAt;
 
+    /** The board it was last listed on, e.g. "workable:learnworlds"; see BoardHealth. */
+    private String board;
+
     protected Job() {
     }
 
@@ -110,6 +113,9 @@ public class Job {
     public JobStatus getStatus() { return status; }
     public Instant getFirstSeenAt() { return firstSeenAt; }
     public Instant getLastSeenAt() { return lastSeenAt; }
+    public String getBoard() { return board; }
+
+    public void listedOn(String board) { this.board = board; }
 
     public void setStatus(JobStatus status) { this.status = status; }
 }

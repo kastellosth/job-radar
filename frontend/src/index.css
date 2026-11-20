@@ -70,6 +70,9 @@ main { max-width: 1000px; margin: 0 auto; padding: 20px 24px 48px; }
 .companies ul { list-style: none; padding: 0; margin: 10px 0 0; }
 .companies li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
 .companies li button { font-size: 14px; padding: 3px 10px; }
+.companies li > span { min-width: 0; overflow-wrap: anywhere; }
+.health { font-size: 14px; color: var(--muted); }
+.health.failing, .failing-count { color: #b91c1c; font-weight: 600; }
 .hint, .note, .muted { color: var(--muted); font-size: 15px; }
 
 @media (max-width: 600px) {

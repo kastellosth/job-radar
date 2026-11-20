@@ -32,6 +32,8 @@ class JobRepositoryIT {
 
     @Autowired
     private JobRepository jobs;
+    @Autowired
+    private BoardHealthRepository health;
 
     private static Job job(String title, int score, Bucket bucket, Instant firstSeen) {
         JobPosting posting = new JobPosting("test", null, "Acme", title, "Athens", false,
@@ -108,5 +110,34 @@ class JobRepositoryIT {
         List<Job> result = jobs.newMatches(STRONG, EnumSet.of(JobStatus.NEW, JobStatus.SEEN), weekStart, T0);
 
         assertThat(result).extracting(Job::getTitle).containsExactly("New strong", "Seen");
+    }
+
+    private Job on(String board, Job job) {
+        job.listedOn(board);
+        return job;
+    }
+
+    @Test
+    void aJobOfABoardThatIsFailingStaysWhileAGoodReadWithoutItClosesIt() {
+        Instant later = T0.plusSeconds(5 * 86_400);
+        BoardHealth down = BoardHealth.of("workable:down");
+        down.read(1, T0);
+        down.failed("503", later);
+        BoardHealth fine = BoardHealth.of("workable:fine");
+        fine.read(3, later);
+        health.saveAllAndFlush(List.of(down, fine));
+        jobs.saveAllAndFlush(List.of(
+                on("workable:down", job("On a board that is down", 8, GOOD, T0)),
+                on("workable:fine", job("Dropped by a board that works", 8, GOOD, T0)),
+                on("workable:fine", job("Still listed", 8, GOOD, later)),
+                job("From before boards were recorded", 8, GOOD, T0)));
+
+        List<Job> result = jobs.dashboard(
+                EnumSet.of(STRONG, GOOD, STRETCH),
+                EnumSet.of(JobStatus.NEW, JobStatus.SEEN, JobStatus.APPLIED),
+                later.minusSeconds(3 * 86_400));
+
+        assertThat(result).extracting(Job::getTitle)
+                .containsExactlyInAnyOrder("On a board that is down", "Still listed");
     }
 }

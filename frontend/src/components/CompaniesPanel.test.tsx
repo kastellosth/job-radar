@@ -4,7 +4,27 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Company } from '../api'
 import { CompaniesPanel } from './CompaniesPanel'
 
-const LEARNWORLDS: Company = { id: 7, provider: 'Workable', slug: 'learnworlds', name: 'LearnWorlds' }
+const LEARNWORLDS: Company = {
+  id: 7,
+  provider: 'Workable',
+  slug: 'learnworlds',
+  name: 'LearnWorlds',
+  lastReadAt: new Date().toISOString(),
+  jobs: 12,
+  failingSince: null,
+  error: null,
+}
+const EY: Company = {
+  id: 8,
+  provider: 'SuccessFactors',
+  slug: 'ey',
+  name: 'EY',
+  lastReadAt: '2026-11-16T06:00:00Z',
+  jobs: 39,
+  failingSince: '2026-11-18T06:00:00Z',
+  error: 'listed no jobs, after 39 last time',
+}
+const NEW_ONE: Company = { ...LEARNWORLDS, id: 9, name: 'Novibet', lastReadAt: null, jobs: null }
 
 interface Call {
   method: string
@@ -103,5 +123,19 @@ describe('CompaniesPanel', () => {
 
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false)
     expect(screen.getByText('LearnWorlds')).toBeInTheDocument()
+  })
+
+  it("shows how each company's board is doing, and counts the failing ones in the heading", async () => {
+    fakeApi({ 'GET /api/companies': () => json([LEARNWORLDS, EY, NEW_ONE]) })
+    render(<CompaniesPanel apiKey="s3cret" />)
+    await screen.findByText('LearnWorlds')
+
+    expect(screen.getByText('Companies (3)')).toBeInTheDocument()
+    expect(screen.getByText('· 1 failing')).toBeInTheDocument()
+    expect(screen.getByText('read today · 12 jobs')).toBeInTheDocument()
+    expect(
+      screen.getByText('failing since 18 Nov 2026: listed no jobs, after 39 last time · its 39 jobs stay listed'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('not read yet')).toBeInTheDocument()
   })
 })

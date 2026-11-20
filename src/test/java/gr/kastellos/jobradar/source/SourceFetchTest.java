@@ -60,6 +60,10 @@ class SourceFetchTest {
             new RadarProperties.Profile(Map.of("java", 3), null, null, null,
                     List.of("thessaloniki", "athens"), List.of("engineer", "developer"), 9, 5, 2)));
 
+    private static List<JobPosting> postings(List<BoardRead> reads) {
+        return reads.stream().flatMap(r -> r.postings().stream()).toList();
+    }
+
     private SmartRecruitersSource smartRecruiters() {
         return new SmartRecruitersSource(builder, companies, scorer);
     }
@@ -76,10 +80,14 @@ class SourceFetchTest {
         server.expect(requestTo("https://apply.workable.com/api/v1/widget/accounts/acme?details=true"))
                 .andRespond(withSuccess(fixture("workable.json"), MediaType.APPLICATION_JSON));
 
-        List<JobPosting> jobs = new WorkableSource(builder, companies).fetch();
+        List<BoardRead> reads = new WorkableSource(builder, companies).fetch();
 
         server.verify();
-        assertThat(jobs).hasSize(2);
+        assertThat(reads).extracting(BoardRead::board).containsExactly("workable:gone", "workable:acme");
+        assertThat(reads.get(0).failed()).isTrue();
+        assertThat(reads.get(0).error()).contains("404");
+        assertThat(reads.get(1).failed()).isFalse();
+        assertThat(reads.get(1).postings()).hasSize(2);
     }
 
     @Test
@@ -89,7 +97,7 @@ class SourceFetchTest {
         server.expect(requestTo("https://api.lever.co/v0/postings/acme?mode=json"))
                 .andRespond(withSuccess(fixture("lever.json"), MediaType.APPLICATION_JSON));
 
-        List<JobPosting> jobs = new LeverSource(builder, companies).fetch();
+        List<JobPosting> jobs = postings(new LeverSource(builder, companies).fetch());
 
         assertThat(jobs).extracting(JobPosting::company).containsOnly("Acme Robotics");
     }
@@ -108,19 +116,20 @@ class SourceFetchTest {
         server.expect(once(), requestTo("https://remotive.com/api/remote-jobs?category=software-dev"))
                 .andRespond(withSuccess(fixture("remotive.json"), MediaType.APPLICATION_JSON));
 
-        List<JobPosting> jobs = new RemotiveSource(builder, remotive(true)).fetch();
+        List<BoardRead> reads = new RemotiveSource(builder, remotive(true)).fetch();
 
         server.verify();
-        assertThat(jobs).extracting(JobPosting::title)
+        assertThat(reads).extracting(BoardRead::board).containsExactly("remotive");
+        assertThat(postings(reads)).extracting(JobPosting::title)
                 .containsExactly("Junior Java Developer", "Junior React Developer");
     }
 
     @Test
     void remotiveSwitchedOffMakesNoCall() {
-        List<JobPosting> jobs = new RemotiveSource(builder, remotive(false)).fetch();
+        List<BoardRead> reads = new RemotiveSource(builder, remotive(false)).fetch();
 
         server.verify();
-        assertThat(jobs).isEmpty();
+        assertThat(reads).isEmpty();
     }
 
     @Test
@@ -155,7 +164,7 @@ class SourceFetchTest {
         server.expect(once(), requestTo("https://api.smartrecruiters.com/v1/companies/AcmeCo/postings/111"))
                 .andRespond(withSuccess(fixture("smartrecruiters-detail.json"), MediaType.APPLICATION_JSON));
 
-        List<JobPosting> jobs = smartRecruiters().fetch();
+        List<JobPosting> jobs = postings(smartRecruiters().fetch());
 
         server.verify();
         assertThat(jobs).hasSize(3);
@@ -171,7 +180,7 @@ class SourceFetchTest {
         server.expect(requestTo("https://api.smartrecruiters.com/v1/companies/AcmeCo/postings/111"))
                 .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
 
-        List<JobPosting> jobs = smartRecruiters().fetch();
+        List<JobPosting> jobs = postings(smartRecruiters().fetch());
 
         assertThat(jobs).hasSize(3);
         assertThat(jobs.get(0).description()).isEqualTo("Software Development Entry Level Information Technology");
@@ -185,5 +194,18 @@ class SourceFetchTest {
 
         assertThat(smartRecruiters().fetchCompany("AcmeCo")).hasSize(3);
         server.verify();
+    }
+
+    @Test
+    void remotiveDownIsAFailedReadNotAnException() {
+        server.expect(requestTo("https://remotive.com/api/remote-jobs?category=software-dev"))
+                .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+        List<BoardRead> reads = new RemotiveSource(builder, remotive(true)).fetch();
+
+        assertThat(reads).singleElement().satisfies(r -> {
+            assertThat(r.board()).isEqualTo("remotive");
+            assertThat(r.failed()).isTrue();
+        });
     }
 }

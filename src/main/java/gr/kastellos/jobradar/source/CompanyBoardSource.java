@@ -41,20 +41,23 @@ public abstract class CompanyBoardSource implements JobSource {
         return provider().sourceName();
     }
 
+    /** One read per tracked company: one bad slug must not hide the other companies' jobs. */
     @Override
-    public List<JobPosting> fetch() {
-        List<JobPosting> all = new ArrayList<>();
+    public List<BoardRead> fetch() {
+        List<BoardRead> reads = new ArrayList<>();
         for (TrackedCompany company : companies.findByProvider(provider())) {
             try {
+                List<JobPosting> postings = new ArrayList<>();
                 for (JobPosting posting : complete(company.getSlug(), fetchCompany(company.getSlug()))) {
-                    all.add(named(posting, company));
+                    postings.add(named(posting, company));
                 }
+                reads.add(BoardRead.ok(company.board(), postings));
             } catch (RuntimeException e) {
-                // One bad slug must not hide the other companies' jobs.
                 log.warn("{} company '{}' failed: {}", provider().displayName(), company.getSlug(), e.getMessage());
+                reads.add(BoardRead.failed(company.board(), e));
             }
         }
-        return all;
+        return reads;
     }
 
     /**

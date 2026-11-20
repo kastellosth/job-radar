@@ -36,17 +36,21 @@ public class RemotiveSource implements JobSource {
         return "remotive";
     }
 
-    /** A single source call: a failure is thrown, so the ingest service logs it and carries on. */
+    /** One board, one call. Switched off, it reads nothing, so it has no health to report either. */
     @Override
-    public List<JobPosting> fetch() {
+    public List<BoardRead> fetch() {
         if (!enabled) {
             return List.of();
         }
-        JsonNode body = http.get()
-                .uri("/api/remote-jobs?category=software-dev")
-                .retrieve()
-                .body(JsonNode.class);
-        return parse(body);
+        try {
+            JsonNode body = http.get()
+                    .uri("/api/remote-jobs?category=software-dev")
+                    .retrieve()
+                    .body(JsonNode.class);
+            return List.of(BoardRead.ok(name(), parse(body)));
+        } catch (RuntimeException e) {
+            return List.of(BoardRead.failed(name(), e));
+        }
     }
 
     static List<JobPosting> parse(JsonNode body) {

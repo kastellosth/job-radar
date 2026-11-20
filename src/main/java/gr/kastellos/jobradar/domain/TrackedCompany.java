@@ -45,6 +45,11 @@ public class TrackedCompany {
         return company;
     }
 
+    /** Key of its board in job.board and board_health, e.g. "workable:learnworlds". */
+    public String board() {
+        return provider.sourceName() + ":" + slug;
+    }
+
     public Long getId() { return id; }
     public Provider getProvider() { return provider; }
     public String getSlug() { return slug; }

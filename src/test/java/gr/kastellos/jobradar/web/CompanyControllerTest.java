@@ -1,5 +1,6 @@
 package gr.kastellos.jobradar.web;
 
+import gr.kastellos.jobradar.domain.BoardHealth;
 import gr.kastellos.jobradar.domain.Provider;
 import gr.kastellos.jobradar.domain.TrackedCompany;
 import gr.kastellos.jobradar.service.CompanyService;
@@ -55,13 +56,20 @@ class CompanyControllerTest {
 
     @Test
     void listingNeedsNoKey() throws Exception {
-        when(companies.list()).thenReturn(List.of(learnWorlds()));
+        BoardHealth health = BoardHealth.of("workable:learnworlds");
+        health.read(12, Instant.parse("2026-11-18T06:00:00Z"));
+        health.failed("503 Service Unavailable", Instant.parse("2026-11-18T16:00:00Z"));
+        when(companies.list()).thenReturn(List.of(new CompanyService.Tracked(learnWorlds(), health)));
 
         mvc.perform(get("/api/companies"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(7))
                 .andExpect(jsonPath("$[0].provider").value("Workable"))
-                .andExpect(jsonPath("$[0].name").value("LearnWorlds"));
+                .andExpect(jsonPath("$[0].name").value("LearnWorlds"))
+                .andExpect(jsonPath("$[0].lastReadAt").value("2026-11-18T06:00:00Z"))
+                .andExpect(jsonPath("$[0].jobs").value(12))
+                .andExpect(jsonPath("$[0].failingSince").value("2026-11-18T16:00:00Z"))
+                .andExpect(jsonPath("$[0].error").value("503 Service Unavailable"));
     }
 
     @Test
