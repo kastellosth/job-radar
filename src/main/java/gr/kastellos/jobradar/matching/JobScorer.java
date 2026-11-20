@@ -69,6 +69,12 @@ public class JobScorer {
         return locationAccepted(posting) && softwareRole(lower(posting.title()));
     }
 
+    /** Whether a place is one he accepts, e.g. to list a job's Greek office first among several. */
+    public boolean acceptsPlace(String place) {
+        String p = lower(place);
+        return !p.isBlank() && profile.locations().stream().map(JobScorer::lower).anyMatch(p::contains);
+    }
+
     Bucket bucketFor(int score) {
         if (score >= profile.strongThreshold()) return Bucket.STRONG;
         if (score >= profile.goodThreshold()) return Bucket.GOOD;

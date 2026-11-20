@@ -9,8 +9,9 @@ Java 21 · Spring Boot · PostgreSQL · Flyway · React + TypeScript (Vite) · J
 ```
 Workable ────────┐
 SmartRecruiters ─┤
-Greenhouse ──────┼──> IngestService ──> dedupe ──> JobScorer ──> PostgreSQL ──> REST API ──> dashboard
-Lever ───────────┤    (08:00 + 18:00 Athens)
+Greenhouse ──────┤
+Lever ───────────┼──> IngestService ──> dedupe ──> JobScorer ──> PostgreSQL ──> REST API ──> dashboard
+Workday ─────────┤    (08:00 + 18:00 Athens)
 Remotive ────────┘
 ```
 
@@ -98,6 +99,9 @@ Open **Companies** in the dashboard, paste the company's careers page link and p
 | `boards.greenhouse.io/<token>` or `job-boards.greenhouse.io/<token>` | Greenhouse |
 | `jobs.lever.co/<slug>` | Lever |
 | `careers.smartrecruiters.com/<CompanyId>` | SmartRecruiters |
+| `<tenant>.wd<N>.myworkdayjobs.com/<Site>?locationCountry=…` | Workday |
+
+**Workday** sites (Accenture, PwC and many large employers) list a company's jobs worldwide, so filter the job search to Greece on the company's site first (for example the *Location / Country* filter) and paste the link from the address bar. The filters in it are kept (`locationCountry=566388c1…`; tracking parameters are dropped) and every fetch repeats that exact search through the JSON the site's own pages use, 20 jobs per page. A search that lists more than 500 jobs is refused, as a sign the link was not filtered. Its list gives only a title and a rough date ("Posted 9 Days Ago"; "30+ Days Ago" gives none), so, as with SmartRecruiters, the full ad is read for the jobs that could score: the description, the real posting date, and the offices, listing the accepted ones first (a London job open in Athens shows "Athens, …"). Workday gives no company name, so the company is named from its link (`accenture` → "Accenture", `pwc` → "PWC"). The search is not a documented API: if Workday changes it, the company turns red in **Companies** and its jobs stay until it is fixed.
 
 The same with the API (POST and DELETE need the API key):
 
@@ -127,11 +131,11 @@ Unit tests:
 
 - `JobScorerTest`: the software-role filter (in English and Greek, also in capitals without accents), scoring rules, seniority words counted only in the title, word boundaries (`java` ≠ `javascript`, `node.js` and `c#` still match), location filter, experience parsing in English and Greek, bucket thresholds.
 - `JobPostingTest`: deduplication across boards, Greek accents, remote jobs.
-- `SourceParsingTest`: each provider mapped from a saved sample response, no network. The SmartRecruiters ad text keeps the job's own sections and drops the company blurb and HTML. Greenhouse jobs are dated by `first_published`, not `updated_at` (which changes whenever the ad is edited).
-- `CareersLinkTest`: careers page links of each board become the right board and company id (trailing slashes, query strings, capitals); LinkedIn, plain websites, a link to a single job and broken text are refused.
+- `SourceParsingTest`: each provider mapped from a saved sample response, no network. The SmartRecruiters ad text keeps the job's own sections and drops the company blurb and HTML. Greenhouse jobs are dated by `first_published`, not `updated_at` (which changes whenever the ad is edited). Workday: title, link and place from the list, "2 Locations" left empty, "Posted N Days Ago" as an Athens day and "30+ Days Ago" as no date, and the search read back from the slug.
+- `CareersLinkTest`: careers page links of each board become the right board and company id (trailing slashes, query strings, capitals); LinkedIn, plain websites, a link to a single job and broken text are refused. A Workday search keeps its filters, sorted, and drops tracking parameters, so the same search pasted twice is the same company; a Workday link without its job search, or to one job, is refused; companies are named from their link (`pwc` → "PWC").
 - `CompanyServiceTest`: a company is saved only after its board confirms it, named after its jobs or, when the board only repeats the slug, after the slug; unknown company, already tracked (also when two requests race) and unsupported links are refused before saving; the list carries each board's health, and removing a company forgets it.
 - `CompanyControllerTest`: the list shows each board's last good read, job count and failure; `201`/`400`/`409`/`502`/`404` answers as problem details, and adding or removing needs the API key.
-- `SourceFetchTest`: what the sources request, against a fake HTTP server: every tracked company is read as its own board and one that fails comes back as a failed read (Remotive too), not an exception, Remotive is called exactly once (or not at all when switched off), a SmartRecruiters company with no jobs logs a warning, jobs from a board without company names get the tracked company's name, SmartRecruiters reads the full ad only for software jobs in accepted places, keeps the short description when the ad cannot be read, and reads only the list when a company is added.
+- `SourceFetchTest`: what the sources request, against a fake HTTP server: every tracked company is read as its own board and one that fails comes back as a failed read (Remotive too), not an exception, Remotive is called exactly once (or not at all when switched off), a SmartRecruiters company with no jobs logs a warning, jobs from a board without company names get the tracked company's name, SmartRecruiters reads the full ad only for software jobs in accepted places, keeps the short description when the ad cannot be read, and reads only the list when a company is added. Workday repeats the filtered search page by page (the request body is checked), reads the full ad only for software jobs, keeps a job as listed when its ad fails, lists the accepted office first, and refuses a search of more than 500 jobs.
 - `DigestMailTest`: the email lists each job with company, place, Athens posting date, score, reasons and link; the subject counts the jobs; titles from job boards are escaped and non-http links dropped.
 - `DigestServiceTest`: asks for STRONG jobs of the last 7 days that are NEW or SEEN and still listed; sends one email, or none in an empty week; without `DIGEST_TO` the schedule does nothing and a manual send is refused; a mail failure on the schedule is logged, not thrown.
 - `DigestControllerTest`: `POST /api/digest` needs the key, answers how many jobs were sent, `409` when the email is not set up, `502` without the mail server's message when sending fails.
@@ -148,7 +152,8 @@ Dashboard tests (Vitest + Testing Library, with `fetch` replaced by a fake serve
 
 Integration tests (Testcontainers starts a throw-away `postgres:16-alpine`; the Flyway migrations build the schema):
 
-- `TrackedCompanyRepositoryIT`: migration `V2` starts with the 16 companies, and the unique index refuses the same company with other capitals but allows the same name on another board.
+- `JobTest`: a later read without a date keeps the date an earlier read gave.
+- `TrackedCompanyRepositoryIT`: a Workday search can be tracked (migration `V5`); migration `V2` starts with the 16 companies, and the unique index refuses the same company with other capitals but allows the same name on another board.
 - `JobRepositoryIT`: lookup by fingerprint, the UNIQUE constraint rejects a duplicate, the dashboard query hides SKIP/HIDDEN jobs and sorts best first, and leaves out jobs no board lists any more except ones he applied to; a job of a board that is failing stays while a board that works and dropped it closes it; the weekly email query keeps only new STRONG jobs he has not acted on that are still listed.
 - `IngestServiceIT`: a full ingest in the real Spring context with stub job boards: real scoring from `application.yml`, the same job from two boards stored once, a refreshed score is really written to the database while his status is kept, a board that is down doesn't stop the others, and a week later a board that stayed down still has its job on the dashboard while a working board's dropped job is gone.
 

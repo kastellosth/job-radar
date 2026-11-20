@@ -86,7 +86,10 @@ public class Job {
         this.location = posting.location();
         this.remote = posting.remote();
         this.url = posting.url();
-        this.postedAt = posting.postedAt();
+        // A board that only sometimes gives a date (Workday: "30+ Days Ago") must not erase one it gave before.
+        if (posting.postedAt() != null) {
+            this.postedAt = posting.postedAt();
+        }
         this.score = match.score();
         this.bucket = match.bucket();
         this.reasons = truncate(String.join(", ", match.reasons()), 1024);

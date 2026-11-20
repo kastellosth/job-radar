@@ -62,6 +62,45 @@ class SourceParsingTest {
         assertThat(text).doesNotContain("<p>", "We are a leading company");
     }
 
+    private static final java.time.Clock NOV_20_MORNING =
+            java.time.Clock.fixed(Instant.parse("2026-11-20T06:00:00Z"), java.time.ZoneOffset.UTC);
+
+    @Test
+    void workdayListGivesTitleLinkPlaceAndRoughDate() throws IOException {
+        WorkdaySource.Search search = WorkdaySource.Search.of("acme.wd3/AcmeCareers?locationCountry=x");
+        List<JobPosting> jobs = WorkdaySource.parse(search, fixture("workday-page1.json"), NOV_20_MORNING);
+
+        assertThat(jobs).hasSize(2);
+        JobPosting first = jobs.get(0);
+        assertThat(first.title()).isEqualTo("Junior Software Engineer");
+        assertThat(first.company()).isNull();
+        assertThat(first.location()).isEqualTo("Athens");
+        assertThat(first.url()).isEqualTo("https://acme.wd3.myworkdayjobs.com/AcmeCareers/job/Athens/Junior-Software-Engineer_R001");
+        // "2 Days Ago" seen on the morning of 20 Nov in Athens: 18 Nov, Athens midnight.
+        assertThat(first.postedAt()).isEqualTo(Instant.parse("2026-11-17T22:00:00Z"));
+        assertThat(jobs.get(1).postedAt()).as("30+ days ago is too vague to show as a date").isNull();
+    }
+
+    @Test
+    void workdayLeavesThePlaceEmptyWhenTheListOnlySaysHowManyPlaces() throws IOException {
+        WorkdaySource.Search search = WorkdaySource.Search.of("acme.wd3/AcmeCareers");
+        JobPosting job = WorkdaySource.parse(search, fixture("workday-page2.json"), NOV_20_MORNING).get(0);
+
+        assertThat(job.location()).isNull();
+        assertThat(job.postedAt()).isEqualTo(Instant.parse("2026-11-19T22:00:00Z"));
+    }
+
+    @Test
+    void workdayReadsItsSearchBackFromTheSlug() {
+        WorkdaySource.Search s = WorkdaySource.Search.of(
+                "accenture.wd103/AccentureCareers?locationCountry=abc&locations=d1&locations=d2&q=java+developer");
+
+        assertThat(s.api()).isEqualTo("https://accenture.wd103.myworkdayjobs.com/wday/cxs/accenture/AccentureCareers");
+        assertThat(s.facets()).containsEntry("locationCountry", List.of("abc"))
+                .containsEntry("locations", List.of("d1", "d2"));
+        assertThat(s.text()).isEqualTo("java developer");
+    }
+
     @Test
     void greenhouseUnescapesHtmlContent() throws IOException {
         List<JobPosting> jobs = GreenhouseSource.parse("acme", fixture("greenhouse.json"));

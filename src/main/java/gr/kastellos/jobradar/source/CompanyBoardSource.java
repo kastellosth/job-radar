@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 /**
  * A job board with one list per company (Workable, Greenhouse...). Which companies to read comes from the
@@ -58,6 +60,35 @@ public abstract class CompanyBoardSource implements JobSource {
             }
         }
         return reads;
+    }
+
+    /**
+     * For boards whose list leaves the ad out: {@code read} the full ad of each posting {@code worth} it, at most
+     * {@code max} per company. A posting whose ad cannot be read stays as the list gave it.
+     */
+    protected List<JobPosting> readAds(String slug, List<JobPosting> postings, Predicate<JobPosting> worth,
+                                       UnaryOperator<JobPosting> read, int max) {
+        List<JobPosting> out = new ArrayList<>(postings.size());
+        int tried = 0;
+        int failed = 0;
+        for (JobPosting p : postings) {
+            if (tried >= max || !worth.test(p)) {
+                out.add(p);
+                continue;
+            }
+            tried++;
+            try {
+                out.add(read.apply(p));
+            } catch (RuntimeException e) {
+                failed++;
+                out.add(p);
+            }
+        }
+        if (failed > 0) {
+            log.warn("{} company '{}': {} of {} full ads could not be read; scored on title only",
+                    provider().displayName(), slug, failed, tried);
+        }
+        return out;
     }
 
     /**

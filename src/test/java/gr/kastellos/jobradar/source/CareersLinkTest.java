@@ -1,6 +1,7 @@
 package gr.kastellos.jobradar.source;
 
 import gr.kastellos.jobradar.domain.Provider;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -46,5 +47,60 @@ class CareersLinkTest {
     @ValueSource(strings = {"https://apply.workable.com/j/8A47E3A43D", "apply.workable.com/j/8A47E3A43D/apply"})
     void explainsThatALinkToOneJobIsNotEnough(String link) {
         assertThatThrownBy(() -> CareersLink.parse(link)).hasMessageContaining("link to one job");
+    }
+
+    private static final String GREECE = "566388c1eb974c42bd9e3da4c2f57d60";
+
+    @Test
+    void aWorkdaySearchKeepsItsFiltersAndDropsTheRest() {
+        CareersLink link = CareersLink.parse("https://accenture.wd103.myworkdayjobs.com/en-US/AccentureCareers"
+                + "?locationCountry=" + GREECE.toUpperCase() + "&source=linkedin&q=java%20developer");
+
+        assertThat(link).isEqualTo(new CareersLink(Provider.WORKDAY,
+                "accenture.wd103/AccentureCareers?locationCountry=" + GREECE + "&q=java+developer"));
+    }
+
+    @Test
+    void theSameWorkdaySearchWithFiltersInAnotherOrderIsTheSameCompany() {
+        String athens = "3666ef49a96a01a002d7bf77cf003459";
+        CareersLink a = CareersLink.parse("https://acme.wd3.myworkdayjobs.com/Careers?locations=" + athens
+                + "&locationCountry=" + GREECE);
+        CareersLink b = CareersLink.parse("https://acme.wd3.myworkdayjobs.com/Careers?locationCountry=" + GREECE
+                + "&locations=" + athens);
+
+        assertThat(a).isEqualTo(b);
+    }
+
+    @Test
+    void aWorkdayLinkWithoutFiltersIsAcceptedHereTheBoardDecidesIfItIsTooBig() {
+        assertThat(CareersLink.parse("https://pwc.wd3.myworkdayjobs.com/Global_Experienced_Careers").slug())
+                .isEqualTo("pwc.wd3/Global_Experienced_Careers");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "https://acme.wd3.myworkdayjobs.com/",
+            "https://acme.wd3.myworkdayjobs.com/en-US",
+            "https://myworkdayjobs.com/AcmeCareers"
+    })
+    void rejectsAWorkdayLinkWithoutItsJobSearch(String link) {
+        assertThatThrownBy(() -> CareersLink.parse(link)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void explainsThatALinkToOneWorkdayJobIsNotEnough() {
+        assertThatThrownBy(() -> CareersLink.parse(
+                "https://acme.wd3.myworkdayjobs.com/AcmeCareers/job/Athens/Data-Engineer_R003"))
+                .hasMessageContaining("link to one job");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "https://jobs.lever.co/kaizen-gaming, Kaizen Gaming",
+            "https://accenture.wd103.myworkdayjobs.com/AccentureCareers, Accenture",
+            "https://pwc.wd3.myworkdayjobs.com/Global_Campus_Careers, PWC"
+    })
+    void namesACompanyFromItsLinkUntilItsBoardSaysBetter(String link, String name) {
+        assertThat(CareersLink.parse(link).defaultName()).isEqualTo(name);
     }
 }

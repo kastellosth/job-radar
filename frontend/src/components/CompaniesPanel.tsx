@@ -94,7 +94,10 @@ export function CompaniesPanel({ apiKey }: Props) {
           Add
         </button>
       </form>
-      <p className="hint">Workable, Greenhouse, Lever or SmartRecruiters careers page.</p>
+      <p className="hint">
+        Workable, Greenhouse, Lever or SmartRecruiters careers page. For Workday (e.g. Accenture, PwC), filter the
+        job search to Greece on the company&apos;s site first and paste that link.
+      </p>
       {note && (
         <p className="note" role="note">
           {note}

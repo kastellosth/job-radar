@@ -46,4 +46,14 @@ class TrackedCompanyRepositoryIT {
 
         assertThat(companies.existsByProviderAndSlugIgnoreCase(Provider.LEVER, "learnworlds")).isTrue();
     }
+
+    @Test
+    void aWorkdaySearchCanBeTracked() {
+        TrackedCompany saved = companies.saveAndFlush(TrackedCompany.of(Provider.WORKDAY,
+                "accenture.wd103/AccentureCareers?locationCountry=566388c1eb974c42bd9e3da4c2f57d60", "Accenture",
+                java.time.Instant.parse("2026-11-20T10:00:00Z")));
+
+        assertThat(companies.findByProvider(Provider.WORKDAY)).extracting(TrackedCompany::getId)
+                .containsExactly(saved.getId());
+    }
 }

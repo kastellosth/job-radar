@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Clock;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -86,7 +85,7 @@ public class CompanyService {
                 .map(JobPosting::company)
                 .filter(n -> n != null && !n.equals(link.slug()))
                 .findFirst()
-                .orElse(nameFromSlug(link.slug()));
+                .orElse(link.defaultName());
 
         try {
             TrackedCompany saved = companies.saveAndFlush(
@@ -96,14 +95,6 @@ public class CompanyService {
             // Added by another request between the check and the insert; the unique index caught it.
             throw new AlreadyTrackedException(label + " is already tracked");
         }
-    }
-
-    /** Lever gives no company name: "kaizen-gaming" becomes "Kaizen Gaming". */
-    static String nameFromSlug(String slug) {
-        return Arrays.stream(slug.split("[-_.]+"))
-                .filter(word -> !word.isEmpty())
-                .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
-                .collect(Collectors.joining(" "));
     }
 
     /** Its jobs stay; with its health gone they leave the dashboard once unlisted for radar.hide-unlisted-after. */

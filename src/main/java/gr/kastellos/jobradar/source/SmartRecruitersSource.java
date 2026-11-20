@@ -58,31 +58,10 @@ public class SmartRecruitersSource extends CompanyBoardSource {
 
     @Override
     protected List<JobPosting> complete(String company, List<JobPosting> postings) {
-        List<JobPosting> out = new ArrayList<>(postings.size());
-        int read = 0;
-        int failed = 0;
-        for (JobPosting p : postings) {
-            if (read >= MAX_DETAILS || !scorer.worthReading(p)) {
-                out.add(p);
-                continue;
-            }
-            read++;
-            try {
-                JsonNode detail = http.get()
-                        .uri("/v1/companies/{company}/postings/{id}", company, p.externalId())
-                        .retrieve()
-                        .body(JsonNode.class);
-                out.add(withDescription(p, adText(detail)));
-            } catch (RuntimeException e) {
-                failed++;
-                out.add(p);
-            }
-        }
-        if (failed > 0) {
-            log.warn("SmartRecruiters company '{}': {} of {} full ads could not be read; scored on title only",
-                    company, failed, read);
-        }
-        return out;
+        return readAds(company, postings, scorer::worthReading, p -> withDescription(p, adText(http.get()
+                .uri("/v1/companies/{company}/postings/{id}", company, p.externalId())
+                .retrieve()
+                .body(JsonNode.class))), MAX_DETAILS);
     }
 
     /**

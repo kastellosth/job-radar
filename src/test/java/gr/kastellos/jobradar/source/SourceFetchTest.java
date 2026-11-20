@@ -28,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -207,5 +209,60 @@ class SourceFetchTest {
             assertThat(r.board()).isEqualTo("remotive");
             assertThat(r.failed()).isTrue();
         });
+    }
+
+    private static final String WORKDAY_SEARCH = "https://acme.wd3.myworkdayjobs.com/wday/cxs/acme/AcmeCareers/jobs";
+    private static final String WORKDAY_SLUG = "acme.wd3/AcmeCareers?locationCountry=566388c1eb974c42bd9e3da4c2f57d60";
+
+    private WorkdaySource workday() {
+        return new WorkdaySource(builder, companies, scorer,
+                java.time.Clock.fixed(Instant.parse("2026-11-20T06:00:00Z"), java.time.ZoneOffset.UTC));
+    }
+
+    @Test
+    void workdayRepeatsTheFilteredSearchPageByPageAndReadsFullAdsOnlyForSoftwareJobs() throws IOException {
+        when(companies.findByProvider(Provider.WORKDAY)).thenReturn(
+                List.of(TrackedCompany.of(Provider.WORKDAY, WORKDAY_SLUG, "Acme", Instant.EPOCH)));
+        server.expect(requestTo(WORKDAY_SEARCH))
+                .andExpect(method(org.springframework.http.HttpMethod.POST))
+                .andExpect(content().json("""
+                        {"appliedFacets":{"locationCountry":["566388c1eb974c42bd9e3da4c2f57d60"]},
+                         "limit":20,"offset":0,"searchText":""}"""))
+                .andRespond(withSuccess(fixture("workday-page1.json"), MediaType.APPLICATION_JSON));
+        // 22 in total: a second page. (The saved pages are shortened; a real first page has 20 jobs.)
+        server.expect(requestTo(WORKDAY_SEARCH))
+                .andExpect(content().json("{\"offset\":20}"))
+                .andRespond(withSuccess(fixture("workday-page2.json"), MediaType.APPLICATION_JSON));
+        // The engineer in Athens and the data engineer whose place the list did not say; not the tax associate.
+        server.expect(once(), requestTo("https://acme.wd3.myworkdayjobs.com/wday/cxs/acme/AcmeCareers/job/Athens/Junior-Software-Engineer_R001"))
+                .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        server.expect(once(), requestTo("https://acme.wd3.myworkdayjobs.com/wday/cxs/acme/AcmeCareers/job/London/Data-Engineer_R003"))
+                .andRespond(withSuccess(fixture("workday-detail.json"), MediaType.APPLICATION_JSON));
+
+        List<BoardRead> reads = workday().fetch();
+
+        server.verify();
+        assertThat(reads).singleElement().satisfies(r -> assertThat(r.board()).isEqualTo("workday:" + WORKDAY_SLUG));
+        List<JobPosting> jobs = postings(reads);
+        assertThat(jobs).extracting(JobPosting::title)
+                .containsExactly("Junior Software Engineer", "Tax Associate", "Data Engineer");
+        assertThat(jobs).extracting(JobPosting::company).containsOnly("Acme");
+        assertThat(jobs.get(0).description()).as("its ad could not be read: kept as listed").isEmpty();
+        JobPosting data = jobs.get(2);
+        assertThat(data.location()).as("the accepted office, not London first").isEqualTo("Athens, 112 A Vasilissis Sofia");
+        assertThat(data.description()).contains("Build data pipelines in Java and SQL.").doesNotContain("<p>");
+        assertThat(data.postedAt()).isEqualTo(Instant.parse("2026-11-10T22:00:00Z"));
+        assertThat(data.url()).isEqualTo("https://acme.wd3.myworkdayjobs.com/AcmeCareers/job/London/Data-Engineer_R003");
+    }
+
+    @Test
+    void workdayRefusesASearchThatWasNotFilteredDown() {
+        server.expect(requestTo(WORKDAY_SEARCH))
+                .andRespond(withSuccess("{\"total\":12480,\"jobPostings\":[]}", MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> workday().fetchCompany("acme.wd3/AcmeCareers"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("12480 jobs")
+                .hasMessageContaining("Filter it to Greece");
     }
 }

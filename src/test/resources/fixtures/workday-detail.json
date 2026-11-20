@@ -1,0 +1,14 @@
+{
+  "jobPostingInfo": {
+    "title": "Data Engineer",
+    "location": "London",
+    "additionalLocations": ["Athens, 112 A Vasilissis Sofia", "Lisbon, Amoreiras Square"],
+    "startDate": "2026-11-11",
+    "postedOn": "Posted 9 Days Ago",
+    "remoteType": "Hybrid",
+    "timeType": "Full time",
+    "externalUrl": "https://acme.wd3.myworkdayjobs.com/AcmeCareers/job/London/Data-Engineer_R003",
+    "jobDescription": "<p>Build data pipelines in <b>Java</b> and SQL.</p><ul><li>0-2 years of experience</li></ul>"
+  },
+  "hiringOrganization": { "name": "3003 Acme (UK) Limited Company", "url": "" }
+}

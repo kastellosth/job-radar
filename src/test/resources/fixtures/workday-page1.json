@@ -1,0 +1,19 @@
+{
+  "total": 22,
+  "jobPostings": [
+    {
+      "title": "Junior Software Engineer",
+      "externalPath": "/job/Athens/Junior-Software-Engineer_R001",
+      "locationsText": "Athens",
+      "postedOn": "Posted 2 Days Ago",
+      "bulletFields": ["R001"]
+    },
+    {
+      "title": "Tax Associate",
+      "externalPath": "/job/Athens/Tax-Associate_R002",
+      "locationsText": "Athens",
+      "postedOn": "Posted 30+ Days Ago",
+      "bulletFields": ["R002"]
+    }
+  ]
+}
