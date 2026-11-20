@@ -51,7 +51,7 @@ class TrackedCompanyRepositoryIT {
     void aWorkdaySearchCanBeTracked() {
         TrackedCompany saved = companies.saveAndFlush(TrackedCompany.of(Provider.WORKDAY,
                 "accenture.wd103/AccentureCareers?locationCountry=566388c1eb974c42bd9e3da4c2f57d60", "Accenture",
-                java.time.Instant.parse("2026-11-20T10:00:00Z")));
+                Instant.parse("2026-11-20T10:00:00Z")));
 
         assertThat(companies.findByProvider(Provider.WORKDAY)).extracting(TrackedCompany::getId)
                 .containsExactly(saved.getId());
@@ -60,7 +60,7 @@ class TrackedCompanyRepositoryIT {
     @Test
     void aSuccessFactorsSearchCanBeTracked() {
         companies.saveAndFlush(TrackedCompany.of(Provider.SUCCESSFACTORS, "careers.ey.com/ey?locationsearch=Greece",
-                "EY", java.time.Instant.parse("2026-11-20T10:00:00Z")));
+                "EY", Instant.parse("2026-11-20T10:00:00Z")));
 
         assertThat(companies.findByProvider(Provider.SUCCESSFACTORS)).hasSize(1);
     }

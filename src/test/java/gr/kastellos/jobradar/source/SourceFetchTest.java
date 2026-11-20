@@ -19,7 +19,10 @@ import org.springframework.web.client.RestClient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -52,7 +55,7 @@ class SourceFetchTest {
     }
 
     private void tracking(Provider provider, String... slugs) {
-        when(companies.findByProvider(provider)).thenReturn(java.util.Arrays.stream(slugs)
+        when(companies.findByProvider(provider)).thenReturn(Arrays.stream(slugs)
                 .map(slug -> TrackedCompany.of(provider, slug, slug, Instant.EPOCH))
                 .toList());
     }
@@ -216,7 +219,7 @@ class SourceFetchTest {
 
     private WorkdaySource workday() {
         return new WorkdaySource(builder, companies, scorer,
-                java.time.Clock.fixed(Instant.parse("2026-11-20T06:00:00Z"), java.time.ZoneOffset.UTC));
+                Clock.fixed(Instant.parse("2026-11-20T06:00:00Z"), ZoneOffset.UTC));
     }
 
     @Test

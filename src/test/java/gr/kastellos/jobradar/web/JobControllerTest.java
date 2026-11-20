@@ -1,7 +1,12 @@
 package gr.kastellos.jobradar.web;
 
 import gr.kastellos.jobradar.config.AppConfig;
+import gr.kastellos.jobradar.domain.Bucket;
+import gr.kastellos.jobradar.domain.Job;
+import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.JobRepository;
+import gr.kastellos.jobradar.domain.MatchResult;
+import gr.kastellos.jobradar.domain.Pay;
 import gr.kastellos.jobradar.service.IngestService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +16,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -27,11 +34,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** The filter in front of the real controller, with the service and repository mocked. */
+/** JobController behind the API key filter, with the service and repository mocked. */
 @WebMvcTest(JobController.class)
 @Import(AppConfig.class)
 @TestPropertySource(properties = "radar.api-key=test-key")
-class ApiKeyFilterTest {
+class JobControllerTest {
 
     @Autowired
     private MockMvc mvc;
@@ -107,5 +114,27 @@ class ApiKeyFilterTest {
         when(jobs.dashboard(anyCollection(), anyCollection(), any())).thenReturn(List.of());
 
         mvc.perform(get("/api/jobs")).andExpect(status().isOk());
+    }
+
+    @Test
+    void answersWithWhatTheDashboardShowsAndNothingInternal() throws Exception {
+        Job job = Job.from(new JobPosting("workable", "ABC123", "Acme", "Junior Java Developer", "Athens", false,
+                "https://acme.example/1", "Java", Instant.parse("2026-11-16T09:00:00Z")),
+                new MatchResult(10, Bucket.STRONG, List.of("+3 java")), Instant.parse("2026-11-18T08:00:00Z"));
+        job.paid(new Pay(1200, 1500, "EUR", Pay.Period.MONTH, "Μικτές αποδοχές 1.200 - 1.500 €"));
+        job.listedOn("workable:acme");
+        ReflectionTestUtils.setField(job, "id", 7L);
+        when(jobs.dashboard(anyCollection(), anyCollection(), any())).thenReturn(List.of(job));
+
+        mvc.perform(get("/api/jobs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.STRONG[0].id").value(7))
+                .andExpect(jsonPath("$.STRONG[0].title").value("Junior Java Developer"))
+                .andExpect(jsonPath("$.STRONG[0].payMin").value(1200))
+                .andExpect(jsonPath("$.STRONG[0].payPeriod").value("MONTH"))
+                .andExpect(jsonPath("$.STRONG[0].fingerprint").doesNotExist())
+                .andExpect(jsonPath("$.STRONG[0].externalId").doesNotExist())
+                .andExpect(jsonPath("$.STRONG[0].board").doesNotExist())
+                .andExpect(jsonPath("$.GOOD").isEmpty());
     }
 }

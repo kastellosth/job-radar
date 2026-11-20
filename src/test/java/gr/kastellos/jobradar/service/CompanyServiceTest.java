@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -119,7 +120,7 @@ class CompanyServiceTest {
     void removingAnUnknownCompanyIsNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.remove(99L)).isInstanceOf(java.util.NoSuchElementException.class);
+        assertThatThrownBy(() -> service.remove(99L)).isInstanceOf(NoSuchElementException.class);
         verify(repo, never()).delete(any());
     }
 

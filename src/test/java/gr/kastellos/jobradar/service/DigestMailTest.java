@@ -4,6 +4,7 @@ import gr.kastellos.jobradar.domain.Bucket;
 import gr.kastellos.jobradar.domain.Job;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.MatchResult;
+import gr.kastellos.jobradar.domain.Pay;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -59,11 +60,11 @@ class DigestMailTest {
     @Test
     void showsThePayWhenTheAdGivesIt() {
         Job paid = job("Junior Java Developer", "Acme", "https://acme.example/1", null);
-        paid.paid(new gr.kastellos.jobradar.domain.Pay(30000, 40000, "EUR",
-                gr.kastellos.jobradar.domain.Pay.Period.YEAR, "gross"));
+        paid.paid(new Pay(30000, 40000, "EUR",
+                Pay.Period.YEAR, "gross"));
         Job monthly = job("Junior QA Engineer", "Acme", "https://acme.example/2", null);
-        monthly.paid(new gr.kastellos.jobradar.domain.Pay(1200, 1200, "EUR",
-                gr.kastellos.jobradar.domain.Pay.Period.MONTH, "gross"));
+        monthly.paid(new Pay(1200, 1200, "EUR",
+                Pay.Period.MONTH, "gross"));
 
         DigestMail mail = DigestMail.of(List.of(paid, monthly, job("Data Engineer", "Acme", "https://a.example/3", null)), "");
 

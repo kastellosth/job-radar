@@ -3,11 +3,15 @@ package gr.kastellos.jobradar.source;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.kastellos.jobradar.domain.JobPosting;
+import gr.kastellos.jobradar.domain.Pay;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,8 +67,8 @@ class SourceParsingTest {
         assertThat(text).doesNotContain("<p>", "We are a leading company");
     }
 
-    private static final java.time.Clock NOV_20_MORNING =
-            java.time.Clock.fixed(Instant.parse("2026-11-20T06:00:00Z"), java.time.ZoneOffset.UTC);
+    private static final Clock NOV_20_MORNING =
+            Clock.fixed(Instant.parse("2026-11-20T06:00:00Z"), ZoneOffset.UTC);
 
     @Test
     void workdayListGivesTitleLinkPlaceAndRoughDate() throws IOException {
@@ -104,7 +108,7 @@ class SourceParsingTest {
 
     private String page(String name) throws IOException {
         try (InputStream in = getClass().getResourceAsStream("/fixtures/" + name)) {
-            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
 
@@ -171,8 +175,8 @@ class SourceParsingTest {
     @Test
     void leverAndRemotiveGiveTheirOwnPayFields() throws IOException {
         assertThat(LeverSource.parse("acme", fixture("lever.json")).get(0).pay())
-                .isEqualTo(new gr.kastellos.jobradar.domain.Pay(30000, 40000, "EUR",
-                        gr.kastellos.jobradar.domain.Pay.Period.YEAR, ""));
+                .isEqualTo(new Pay(30000, 40000, "EUR",
+                        Pay.Period.YEAR, ""));
         var remotive = RemotiveSource.parse(fixture("remotive.json"));
         assertThat(remotive.get(0).pay().min()).isEqualTo(35300);
         assertThat(remotive.get(0).pay().max()).isEqualTo(52000);

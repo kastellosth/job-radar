@@ -5,6 +5,7 @@ import gr.kastellos.jobradar.domain.Job;
 import gr.kastellos.jobradar.domain.JobRepository;
 import gr.kastellos.jobradar.domain.JobStatus;
 import gr.kastellos.jobradar.service.IngestService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -53,18 +54,18 @@ public class JobController {
      * Example: GET /api/jobs?status=NEW,SEEN
      */
     @GetMapping("/jobs")
-    public Map<Bucket, List<Job>> grouped(@RequestParam(required = false) Set<JobStatus> status) {
+    public Map<Bucket, List<JobView>> grouped(@RequestParam(required = false) Set<JobStatus> status) {
         Set<JobStatus> statuses = status == null || status.isEmpty()
                 ? EnumSet.of(JobStatus.NEW, JobStatus.SEEN, JobStatus.APPLIED)
                 : status;
         Set<Bucket> visible = EnumSet.of(Bucket.STRONG, Bucket.GOOD, Bucket.STRETCH);
 
-        Map<Bucket, List<Job>> grouped = new LinkedHashMap<>();
+        Map<Bucket, List<JobView>> grouped = new LinkedHashMap<>();
         for (Bucket b : visible) {
             grouped.put(b, new ArrayList<>());
         }
         for (Job job : jobs.dashboard(visible, statuses, clock.instant().minus(hideUnlistedAfter))) {
-            grouped.get(job.getBucket()).add(job);
+            grouped.get(job.getBucket()).add(JobView.of(job));
         }
         return grouped;
     }
@@ -74,11 +75,11 @@ public class JobController {
 
     @PatchMapping("/jobs/{id}/status")
     @Transactional
-    public Job updateStatus(@PathVariable long id, @RequestBody @jakarta.validation.Valid StatusUpdate update) {
+    public JobView updateStatus(@PathVariable long id, @RequestBody @Valid StatusUpdate update) {
         Job job = jobs.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job " + id + " not found"));
         job.setStatus(update.status());
-        return job;
+        return JobView.of(job);
     }
 
     /** Run an ingest now instead of waiting for the schedule. */

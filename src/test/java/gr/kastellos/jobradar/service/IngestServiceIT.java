@@ -19,7 +19,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.EnumSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -157,12 +159,12 @@ class IngestServiceIT {
         // A week later: board A is down every time, board B works but lists another job instead of its first.
         boardA.willFail(new IllegalStateException("HTTP 503"));
         boardB.willReturn(junior("board-b", "Gamma Ltd", "Java"));
-        clock.set(DAY_1.plus(java.time.Duration.ofDays(7)));
+        clock.set(DAY_1.plus(Duration.ofDays(7)));
         ingest.run();
 
-        var shown = jobs.dashboard(java.util.EnumSet.of(Bucket.STRONG, Bucket.GOOD, Bucket.STRETCH),
-                java.util.EnumSet.of(JobStatus.NEW, JobStatus.SEEN, JobStatus.APPLIED),
-                clock.instant().minus(java.time.Duration.ofDays(3)));
+        var shown = jobs.dashboard(EnumSet.of(Bucket.STRONG, Bucket.GOOD, Bucket.STRETCH),
+                EnumSet.of(JobStatus.NEW, JobStatus.SEEN, JobStatus.APPLIED),
+                clock.instant().minus(Duration.ofDays(3)));
         assertThat(shown).extracting(Job::getCompany).containsExactlyInAnyOrder("Acme S.A.", "Gamma Ltd");
         assertThat(health.findById("board-a").orElseThrow().isFailing()).isTrue();
         assertThat(health.findById("board-b").orElseThrow().isFailing()).isFalse();

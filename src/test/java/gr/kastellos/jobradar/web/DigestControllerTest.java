@@ -10,6 +10,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,7 +62,7 @@ class DigestControllerTest {
 
         mvc.perform(post("/api/digest").header("X-Api-Key", "test-key"))
                 .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("me@gmail.com"))));
+                .andExpect(jsonPath("$.detail").value(not(
+                        containsString("me@gmail.com"))));
     }
 }
