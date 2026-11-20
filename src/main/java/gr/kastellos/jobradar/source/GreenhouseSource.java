@@ -1,5 +1,6 @@
 package gr.kastellos.jobradar.source;
 
+import java.util.Set;
 import com.fasterxml.jackson.databind.JsonNode;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.Provider;
@@ -66,5 +67,11 @@ public class GreenhouseSource extends CompanyBoardSource {
     private static Instant postedAt(JsonNode job) {
         Instant published = Json.instant(job, "first_published");
         return published != null ? published : Json.instant(job, "updated_at");
+    }
+
+    /** Its links: boards.greenhouse.io/kaizengaming or job-boards.greenhouse.io/kaizengaming. Null otherwise. */
+    static CareersLink link(Link link) {
+        return Set.of("boards.greenhouse.io", "job-boards.greenhouse.io").contains(link.host())
+                ? link.simple(Provider.GREENHOUSE, link.first(), false) : null;
     }
 }

@@ -1,5 +1,6 @@
 package gr.kastellos.jobradar.source;
 
+import java.util.Set;
 import com.fasterxml.jackson.databind.JsonNode;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.Provider;
@@ -91,8 +92,7 @@ public class SmartRecruitersSource extends CompanyBoardSource {
         String description = p.description() == null || p.description().isBlank()
                 ? adText
                 : p.description() + "\n" + adText;
-        return new JobPosting(p.source(), p.externalId(), p.company(), p.title(), p.location(), p.remote(),
-                p.url(), description, p.postedAt(), p.pay());
+        return p.withDescription(description);
     }
 
     static List<JobPosting> parse(String companyId, JsonNode body) {
@@ -128,5 +128,11 @@ public class SmartRecruitersSource extends CompanyBoardSource {
 
     private static String nz(String s) {
         return s == null ? "" : s;
+    }
+
+    /** Its links: careers.smartrecruiters.com/NetcompanyIntrasoft. Ids are case-sensitive. Null otherwise. */
+    static CareersLink link(Link link) {
+        return Set.of("careers.smartrecruiters.com", "jobs.smartrecruiters.com").contains(link.host())
+                ? link.simple(Provider.SMARTRECRUITERS, link.first(), true) : null;
     }
 }

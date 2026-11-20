@@ -1,5 +1,8 @@
 package gr.kastellos.jobradar.source;
 
+import java.util.TreeSet;
+import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.Provider;
 import gr.kastellos.jobradar.domain.TrackedCompanyRepository;
@@ -53,6 +56,12 @@ public class SuccessFactorsSource extends CompanyBoardSource {
             DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss zzz yyyy", Locale.ENGLISH);
     /** "5 Nov 2026", as some result tables give the date. */
     private static final DateTimeFormatter LIST_DATE = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH);
+
+    /** A public domain name; an IP address or a one-word host (localhost) is not a company's careers site. */
+    private static final Pattern PUBLIC_HOST = Pattern.compile("([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}");
+    private static final Pattern SITE_PART = Pattern.compile("[A-Za-z0-9_-]{1,60}");
+    /** Search parameters that choose which jobs; the rest (createNewAlert, startrow...) are dropped. */
+    private static final Pattern FILTER = Pattern.compile("q|locationsearch|locale|optionsFacetsDD_[A-Za-z_]{1,40}");
 
     private final RestClient http;
     private final JobScorer scorer;
@@ -255,7 +264,43 @@ public class SuccessFactorsSource extends CompanyBoardSource {
                 // keep what the list gave
             }
         }
-        return new JobPosting(p.source(), p.externalId(), p.company(), p.title(), p.location(), p.remote(), p.url(),
-                description == null ? p.description() : description.text(), posted, p.pay());
+        return p.withAd(p.location(), p.remote(), p.url(),
+                description == null ? p.description() : description.text(), posted);
+    }
+
+    /**
+     * Its links: a job search on the company's own domain, .../search/?..., with the filters that choose jobs kept,
+     * sorted: "careers.ey.com/ey?locationsearch=Greece". Recognised by its shape, so it is asked last; adding the
+     * company then checks the page really is a SuccessFactors search. Null for any other link.
+     */
+    static CareersLink link(Link link) {
+        List<String> path = link.path();
+        if (path.isEmpty() || !path.get(path.size() - 1).equalsIgnoreCase("search")
+                || !PUBLIC_HOST.matcher(link.host()).matches()) {
+            return null;
+        }
+        List<String> site = path.subList(0, path.size() - 1);
+        if (site.size() > 2 || !site.stream().allMatch(s -> SITE_PART.matcher(s).matches())) {
+            throw new IllegalArgumentException("Not a job search link: " + link.text());
+        }
+        TreeSet<String> filters = new TreeSet<>();
+        for (QueryString.Param param : QueryString.parse(link.rawQuery())) {
+            if (FILTER.matcher(param.key()).matches() && !param.value().isEmpty() && param.value().length() <= 100) {
+                filters.add(param.key() + "=" + URLEncoder.encode(param.value(), StandardCharsets.UTF_8));
+            }
+        }
+        String slug = link.host() + (site.isEmpty() ? "" : "/" + String.join("/", site))
+                + (filters.isEmpty() ? "" : "?" + String.join("&", filters));
+        if (slug.length() > 255) {
+            throw new IllegalArgumentException("That job search link has too many filters. Keep only the place");
+        }
+        return new CareersLink(Provider.SUCCESSFACTORS, slug);
+    }
+
+    /** The company's domain: careers.ey.com -> "EY", career.kotsovolos.gr -> "Kotsovolos". */
+    static String nameFor(String slug) {
+        String host = slug.split("[/?]", 2)[0];
+        String[] labels = host.split("\\.");
+        return CareersLink.acronymOrName(labels.length >= 2 ? labels[labels.length - 2] : host);
     }
 }

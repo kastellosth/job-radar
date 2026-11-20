@@ -69,4 +69,21 @@ public class WorkableSource extends CompanyBoardSource {
         if (b == null || b.isBlank()) return a;
         return a + ", " + b;
     }
+
+    /**
+     * Its links: apply.workable.com/learnworlds or learnworlds.workable.com. A link to one job
+     * (apply.workable.com/j/...) is refused with a hint. Null for any other link.
+     */
+    static CareersLink link(Link link) {
+        if (link.host().equals("apply.workable.com")) {
+            if ("j".equals(link.first())) {
+                throw new IllegalArgumentException("That is a link to one job. Paste the company's careers page instead");
+            }
+            return link.simple(Provider.WORKABLE, link.first(), false);
+        }
+        if (link.host().endsWith(".workable.com") && !link.host().equals("www.workable.com")) {
+            return link.simple(Provider.WORKABLE, link.host().substring(0, link.host().indexOf('.')), false);
+        }
+        return null;
+    }
 }

@@ -80,44 +80,57 @@ public final class PayParser {
         }
         Matcher m = AMOUNT.matcher(text);
         while (m.find()) {
-            String currency = firstNonNull(m.group("c1"), m.group("c2"), m.group("c3"), m.group("c4"));
-            if (currency == null) {
-                continue;
+            Pay pay = payAt(m, text, needPayWord);
+            if (pay != null) {
+                return pay;
             }
-            String after = text.substring(m.end(), Math.min(text.length(), m.end() + 60));
-            String before = text.substring(Math.max(0, m.start() - 100), m.start());
-            if (BIG.matcher(after).find()) {
-                continue;
-            }
-            String near = text.substring(Math.max(0, m.start() - 30), Math.min(text.length(), m.end() + 30));
-            if (NOT_PAY.matcher(near).find()) {
-                continue;
-            }
-            if (needPayWord && !PAY_WORD.matcher(before + m.group() + after.substring(0, Math.min(40, after.length()))).find()) {
-                continue;
-            }
-            boolean k = m.group("ka") != null || m.group("kb") != null;
-            long lo = number(m.group("a"), m.group("ka") != null);
-            long hi = m.group("b") == null ? lo : number(m.group("b"), m.group("kb") != null);
-            // "30-40k": the k after the range is for both ends.
-            if (k && m.group("ka") == null && m.group("b") != null && lo < 1000) {
-                lo *= 1000;
-            }
-            Pay.Period period = period(after, before);
-            if (period == null) {
-                period = guess(Math.max(lo, hi));
-            }
-            if (period == null || !plausible(lo, hi, period)) {
-                continue;
-            }
-            return new Pay((int) lo, (int) hi, currency(currency), period, sentence(text, m.start(), m.end()));
         }
         return null;
     }
 
+    /** The amount the matcher stands on, if it passes every check in turn; null when one fails. */
+    private static Pay payAt(Matcher m, String text, boolean needPayWord) {
+        // 1. Money has a currency: "10,000 customers" does not.
+        String currency = firstNonNull(m.group("c1"), m.group("c2"), m.group("c3"), m.group("c4"));
+        if (currency == null) {
+            return null;
+        }
+        String before = text.substring(Math.max(0, m.start() - 100), m.start());
+        String after = text.substring(m.end(), Math.min(text.length(), m.end() + 60));
+        // 2. Not "€5 million".
+        if (BIG.matcher(after).find()) {
+            return null;
+        }
+        // 3. Not a benefit right next to it: "€500 relocation bonus", "meal vouchers worth €150".
+        String near = text.substring(Math.max(0, m.start() - 30), Math.min(text.length(), m.end() + 30));
+        if (NOT_PAY.matcher(near).find()) {
+            return null;
+        }
+        // 4. A pay word close by: "salary", "gross", "αποδοχές"... (not needed in a field that is about pay).
+        String around = before + m.group() + after.substring(0, Math.min(40, after.length()));
+        if (needPayWord && !PAY_WORD.matcher(around).find()) {
+            return null;
+        }
+        // 5. The amounts; in "30-40k" the k after the range is for both ends.
+        long lo = number(m.group("a"), m.group("ka") != null);
+        long hi = m.group("b") == null ? lo : number(m.group("b"), m.group("kb") != null);
+        if (m.group("kb") != null && m.group("ka") == null && lo < 1000) {
+            lo *= 1000;
+        }
+        // 6. A period, said or guessed from the size, and an amount that is plausible for it.
+        Pay.Period period = period(after, before);
+        if (period == null) {
+            period = guess(Math.max(lo, hi));
+        }
+        if (period == null || !plausible(lo, hi, period)) {
+            return null;
+        }
+        return new Pay((int) lo, (int) hi, currency(currency), period, sentence(text, m.start(), m.end()));
+    }
+
     /** "30.000" and "30,000" are thousands; "35,3" and "12.50" are decimals; then k means thousands. */
     static long number(String raw, boolean thousands) {
-        String s = raw.replace(" ", ".").replace(" ", ".");
+        String s = raw.replace("\u00a0", ".").replace("\u202f", ".");
         double value;
         if (s.matches("\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{1,2})?")) {
             // Groups of three are thousands; one or two digits after the last mark are decimals ("1.200,50").

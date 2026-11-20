@@ -1,5 +1,8 @@
 package gr.kastellos.jobradar.source;
 
+import java.util.TreeSet;
+import java.util.Locale;
+import java.net.URLEncoder;
 import com.fasterxml.jackson.databind.JsonNode;
 import gr.kastellos.jobradar.domain.JobPosting;
 import gr.kastellos.jobradar.domain.Provider;
@@ -47,6 +50,13 @@ public class WorkdaySource extends CompanyBoardSource {
     private static final Pattern DAYS_AGO = Pattern.compile("Posted (\\d+) Days? Ago", Pattern.CASE_INSENSITIVE);
     private static final Pattern SEVERAL_PLACES = Pattern.compile("\\d+ Locations?", Pattern.CASE_INSENSITIVE);
 
+    private static final Pattern HOST = Pattern.compile("([a-z0-9][a-z0-9-]*)\\.(wd\\d{1,3})\\.myworkdayjobs\\.com");
+    private static final Pattern LOCALE = Pattern.compile("[a-z]{2}-[A-Z]{2}");
+    private static final Pattern SITE = Pattern.compile("[A-Za-z0-9_-]{1,100}");
+    /** Filter values are ids like 566388c1eb974c42bd9e3da4c2f57d60; anything else in the link is ignored. */
+    private static final Pattern FACET_ID = Pattern.compile("[0-9a-fA-F]{32}");
+    private static final Pattern FACET_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9_]{0,60}");
+
     private final RestClient http;
     private final JobScorer scorer;
     private final Clock clock;
@@ -76,16 +86,11 @@ public class WorkdaySource extends CompanyBoardSource {
             }
             Map<String, List<String>> facets = new LinkedHashMap<>();
             String text = "";
-            if (m.group(4) != null) {
-                for (String pair : m.group(4).split("&")) {
-                    int eq = pair.indexOf('=');
-                    String key = pair.substring(0, eq);
-                    String value = java.net.URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
-                    if (key.equals("q")) {
-                        text = value;
-                    } else {
-                        facets.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
-                    }
+            for (QueryString.Param param : QueryString.parse(m.group(4))) {
+                if (param.key().equals("q")) {
+                    text = param.value();
+                } else {
+                    facets.computeIfAbsent(param.key(), k -> new ArrayList<>()).add(param.value());
                 }
             }
             return new Search(m.group(1), m.group(2), m.group(3), facets, text);
@@ -219,11 +224,52 @@ public class WorkdaySource extends CompanyBoardSource {
                 // keep the date from the list
             }
         }
-        return new JobPosting(p.source(), p.externalId(), p.company(), p.title(), location,
+        return p.withAd(location,
                 remoteType != null && remoteType.toLowerCase().contains("remote"),
                 url != null && url.startsWith("https://") ? url : p.url(),
                 Json.plain(Json.text(info, "jobDescription")),
-                posted,
-                p.pay());
+                posted);
+    }
+
+    /**
+     * Its links: a job search with the filters chosen on the site (e.g. country Greece) kept in the slug, sorted,
+     * so the same search pasted twice is the same company: "accenture.wd103/AccentureCareers?locationCountry=...".
+     * Null for any other link.
+     */
+    static CareersLink link(Link link) {
+        Matcher host = HOST.matcher(link.host());
+        if (!host.matches()) {
+            return null;
+        }
+        List<String> rest = link.path().stream().dropWhile(s -> LOCALE.matcher(s).matches()).toList();
+        if (rest.isEmpty() || !SITE.matcher(rest.get(0)).matches()) {
+            throw new IllegalArgumentException("Paste the link of the company's job search on Workday, e.g. "
+                    + "https://acme.wd3.myworkdayjobs.com/AcmeCareers?locationCountry=...");
+        }
+        if (rest.size() > 1 && rest.get(1).equals("job")) {
+            throw new IllegalArgumentException("That is a link to one job. Paste the company's job search instead");
+        }
+        TreeSet<String> filters = new TreeSet<>();
+        for (QueryString.Param param : QueryString.parse(link.rawQuery())) {
+            if (param.key().equals("q")) {
+                String search = param.value().length() > 100 ? param.value().substring(0, 100) : param.value();
+                if (!search.isBlank()) {
+                    filters.add("q=" + URLEncoder.encode(search, StandardCharsets.UTF_8));
+                }
+            } else if (FACET_NAME.matcher(param.key()).matches() && FACET_ID.matcher(param.value()).matches()) {
+                filters.add(param.key() + "=" + param.value().toLowerCase(Locale.ROOT));
+            }
+        }
+        String slug = host.group(1) + "." + host.group(2) + "/" + rest.get(0)
+                + (filters.isEmpty() ? "" : "?" + String.join("&", filters));
+        if (slug.length() > 255) {
+            throw new IllegalArgumentException("That Workday link has too many filters. Keep only the country");
+        }
+        return new CareersLink(Provider.WORKDAY, slug);
+    }
+
+    /** Workday gives no company name: the tenant in the link, "accenture" -> "Accenture", "pwc" -> "PWC". */
+    static String nameFor(String slug) {
+        return CareersLink.acronymOrName(slug.substring(0, slug.indexOf('.')));
     }
 }

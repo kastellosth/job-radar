@@ -26,6 +26,21 @@ public record JobPosting(
         this(source, externalId, company, title, location, remote, url, description, postedAt, null);
     }
 
+    /** The same posting under the tracked company's name (boards that only repeat the slug). */
+    public JobPosting withCompany(String name) {
+        return new JobPosting(source, externalId, name, title, location, remote, url, description, postedAt, pay);
+    }
+
+    /** The same posting with the text of its full ad. */
+    public JobPosting withDescription(String text) {
+        return new JobPosting(source, externalId, company, title, location, remote, url, text, postedAt, pay);
+    }
+
+    /** The same posting completed from its full ad, for boards whose list leaves those parts out. */
+    public JobPosting withAd(String place, boolean isRemote, String link, String text, Instant posted) {
+        return new JobPosting(source, externalId, company, title, place, isRemote, link, text, posted, pay);
+    }
+
     /**
      * The same job is often listed on several boards, or reposted with a new id.
      * Company + title + location, normalised, is a good-enough identity for "same job".

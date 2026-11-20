@@ -80,4 +80,9 @@ public class LeverSource extends CompanyBoardSource {
     private static String words(String text) {
         return text != null && text.codePoints().anyMatch(Character::isLetter) ? text.strip() : "";
     }
+
+    /** Its links: jobs.lever.co/acme. Null otherwise. */
+    static CareersLink link(Link link) {
+        return link.host().equals("jobs.lever.co") ? link.simple(Provider.LEVER, link.first(), false) : null;
+    }
 }
