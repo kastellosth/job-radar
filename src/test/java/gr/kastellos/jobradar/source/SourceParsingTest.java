@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Each source is tested against a saved sample response, so a change in mapping code
@@ -99,6 +100,72 @@ class SourceParsingTest {
         assertThat(s.facets()).containsEntry("locationCountry", List.of("abc"))
                 .containsEntry("locations", List.of("d1", "d2"));
         assertThat(s.text()).isEqualTo("java developer");
+    }
+
+    private String page(String name) throws IOException {
+        try (InputStream in = getClass().getResourceAsStream("/fixtures/" + name)) {
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+
+    private static final SuccessFactorsSource.Search EY_SEARCH =
+            SuccessFactorsSource.Search.of("careers.ey.com/ey?locationsearch=Greece");
+
+    @Test
+    void successFactorsTableGivesTitleLinkPlaceDateAndTheTotal() throws IOException {
+        SuccessFactorsSource.Page page = SuccessFactorsSource.parse(EY_SEARCH, page("successfactors-table-1.html"));
+
+        assertThat(page.total()).isEqualTo(3);
+        assertThat(page.postings()).hasSize(2);
+        JobPosting first = page.postings().get(0);
+        assertThat(first.externalId()).isEqualTo("1431959333");
+        assertThat(first.title()).isEqualTo("Junior Java Developer");
+        assertThat(first.company()).isNull();
+        assertThat(first.location()).isEqualTo("Athens, Greece, 15125");
+        assertThat(first.url()).isEqualTo("https://careers.ey.com/ey/job/Athens-Junior-Java-Developer-15125/1431959333/");
+        assertThat(first.postedAt()).isEqualTo(Instant.parse("2026-11-04T22:00:00Z"));
+        assertThat(page.postings().get(1).location()).isEqualTo("Greece");
+        assertThat(page.postings().get(1).postedAt()).isNull();
+    }
+
+    @Test
+    void successFactorsCardsGiveTheValueWithoutItsLabelAndTheTotalFromTheScript() throws IOException {
+        SuccessFactorsSource.Page page = SuccessFactorsSource.parse(
+                SuccessFactorsSource.Search.of("career.kotsovolos.gr?locale=el_GR"), page("successfactors-tiles.html"));
+
+        assertThat(page.total()).isEqualTo(1);
+        JobPosting job = page.postings().get(0);
+        assertThat(job.title()).isEqualTo("Software Engineer");
+        assertThat(job.location()).isEqualTo("ΝΕΟ ΗΡΑΚΛΕΙΟ");
+        assertThat(job.postedAt()).as("a Greek date is left to the job page").isNull();
+        assertThat(job.url()).isEqualTo("https://career.kotsovolos.gr/job/Software-Engineer-14121/1373941055/");
+    }
+
+    @Test
+    void successFactorsJobPageGivesDescriptionAndPostingDate() throws IOException {
+        JobPosting listed = SuccessFactorsSource.parse(EY_SEARCH, page("successfactors-table-1.html")).postings().get(0);
+
+        JobPosting full = SuccessFactorsSource.withAd(listed, page("successfactors-job.html"));
+
+        assertThat(full.description()).contains("Build REST services in Java and Spring Boot.", "0-2 years")
+                .doesNotContain("<p>");
+        assertThat(full.postedAt()).isEqualTo(Instant.parse("2026-10-28T02:00:00Z"));
+        assertThat(full.location()).isEqualTo(listed.location());
+    }
+
+    @Test
+    void aPageThatIsNotASuccessFactorsSearchIsRefused() {
+        assertThatThrownBy(() -> SuccessFactorsSource.parse(EY_SEARCH, "<html><body><h1>Welcome</h1></body></html>"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not a SuccessFactors job search");
+    }
+
+    @Test
+    void successFactorsSearchIsReadBackFromItsSlug() {
+        assertThat(SuccessFactorsSource.Search.of("careers.ey.com/ey?locationsearch=Greece").page(25)).hasToString(
+                "https://careers.ey.com/ey/search/?locationsearch=Greece&startrow=25");
+        assertThat(SuccessFactorsSource.Search.of("career.kotsovolos.gr").page(0)).hasToString(
+                "https://career.kotsovolos.gr/search/?startrow=0");
     }
 
     @Test

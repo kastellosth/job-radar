@@ -98,9 +98,34 @@ class CareersLinkTest {
     @CsvSource({
             "https://jobs.lever.co/kaizen-gaming, Kaizen Gaming",
             "https://accenture.wd103.myworkdayjobs.com/AccentureCareers, Accenture",
-            "https://pwc.wd3.myworkdayjobs.com/Global_Campus_Careers, PWC"
+            "https://pwc.wd3.myworkdayjobs.com/Global_Campus_Careers, PWC",
+            "https://careers.ey.com/ey/search/?locationsearch=Greece, EY",
+            "https://career.kotsovolos.gr/search/?q=&locale=el_GR, Kotsovolos",
+            "https://opportunities.vodafone.com/search/?q=&locationsearch=Greece, Vodafone"
     })
     void namesACompanyFromItsLinkUntilItsBoardSaysBetter(String link, String name) {
         assertThat(CareersLink.parse(link).defaultName()).isEqualTo(name);
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "https://careers.ey.com/ey/search/?createNewAlert=false&q=&locationsearch=Greece&local=en_US | careers.ey.com/ey?locationsearch=Greece",
+            "https://opportunities.vodafone.com/search/?q=&locationsearch=Greece&startrow=25 | opportunities.vodafone.com?locationsearch=Greece",
+            "https://career.kotsovolos.gr/search/?q=&locale=el_GR | career.kotsovolos.gr?locale=el_GR",
+            "https://careers.example.com/search/?q=java%20developer&optionsFacetsDD_country=GR | careers.example.com?optionsFacetsDD_country=GR&q=java+developer"
+    })
+    void aSuccessFactorsSearchKeepsTheFiltersThatChooseJobs(String link, String slug) {
+        assertThat(CareersLink.parse(link)).isEqualTo(new CareersLink(Provider.SUCCESSFACTORS, slug));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "https://127.0.0.1/search/?q=",
+            "https://localhost/search/",
+            "https://careers.ey.com/ey/",
+            "https://careers.ey.com/a/b/c/search/"
+    })
+    void aSearchLinkMustBeOnACompanysDomain(String link) {
+        assertThatThrownBy(() -> CareersLink.parse(link)).isInstanceOf(IllegalArgumentException.class);
     }
 }

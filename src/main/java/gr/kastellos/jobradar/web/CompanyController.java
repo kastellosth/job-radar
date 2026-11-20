@@ -5,6 +5,8 @@ import gr.kastellos.jobradar.domain.TrackedCompany;
 import gr.kastellos.jobradar.service.CompanyService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +27,8 @@ import java.util.NoSuchElementException;
 @RestController
 @RequestMapping("/api/companies")
 public class CompanyController {
+
+    private static final Logger log = LoggerFactory.getLogger(CompanyController.class);
 
     private final CompanyService companies;
 
@@ -96,6 +100,7 @@ public class CompanyController {
     /** The job board itself failed (down, 5xx, timeout): not the user's fault, so not a 400. */
     @ExceptionHandler(RestClientException.class)
     ProblemDetail boardUnavailable(RestClientException e) {
+        log.warn("Job board did not answer while adding a company: {}", e.toString());
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY,
                 "The job board did not answer, try again later");
     }

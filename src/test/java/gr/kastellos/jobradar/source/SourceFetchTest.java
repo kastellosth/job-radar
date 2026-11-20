@@ -265,4 +265,55 @@ class SourceFetchTest {
                 .hasMessageContaining("12480 jobs")
                 .hasMessageContaining("Filter it to Greece");
     }
+
+    private static final String EY_SLUG = "careers.ey.com/ey?locationsearch=Greece";
+
+    @Test
+    void successFactorsWalksTheResultPagesAndReadsJobPagesOnlyForSoftwareJobs() throws IOException {
+        when(companies.findByProvider(Provider.SUCCESSFACTORS)).thenReturn(
+                List.of(TrackedCompany.of(Provider.SUCCESSFACTORS, EY_SLUG, "EY", Instant.EPOCH)));
+        server.expect(requestTo("https://careers.ey.com/ey/search/?locationsearch=Greece&startrow=0"))
+                .andRespond(withSuccess(fixture("successfactors-table-1.html"), MediaType.TEXT_HTML));
+        server.expect(requestTo("https://careers.ey.com/ey/search/?locationsearch=Greece&startrow=2"))
+                .andRespond(withSuccess(fixture("successfactors-table-2.html"), MediaType.TEXT_HTML));
+        // The Java developer in Athens and the data engineer in Thessaloniki; not the tax senior.
+        server.expect(once(), requestTo("https://careers.ey.com/ey/job/Athens-Junior-Java-Developer-15125/1431959333/"))
+                .andRespond(withSuccess(fixture("successfactors-job.html"), MediaType.TEXT_HTML));
+        server.expect(once(), requestTo("https://careers.ey.com/ey/job/Thessaloniki-Data-Engineer-54625/1431959555/"))
+                .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+
+        List<BoardRead> reads = new SuccessFactorsSource(builder, companies, scorer).fetch();
+
+        server.verify();
+        assertThat(reads).singleElement().satisfies(r -> assertThat(r.board()).isEqualTo("successfactors:" + EY_SLUG));
+        List<JobPosting> jobs = postings(reads);
+        assertThat(jobs).extracting(JobPosting::title).containsExactly("Junior Java Developer", "Tax Senior", "Data Engineer");
+        assertThat(jobs).extracting(JobPosting::company).containsOnly("EY");
+        assertThat(jobs.get(0).description()).contains("Spring Boot");
+        assertThat(jobs.get(2).description()).as("its page failed: kept as listed").isEmpty();
+    }
+
+    @Test
+    void successFactorsRefusesASearchThatWasNotNarrowedDown() {
+        server.expect(requestTo("https://careers.ey.com/ey/search/?startrow=0")).andRespond(withSuccess(
+                "<span class=\"paginationLabel\">Results <b>1 – 25</b> of <b>4210</b></span>"
+                        + "<table><tr class=\"data-row\"><td><a class=\"jobTitle-link\" href=\"/ey/job/x/123456/\">X</a></td></tr></table>",
+                MediaType.TEXT_HTML));
+
+        assertThatThrownBy(() -> new SuccessFactorsSource(builder, companies, scorer).fetchCompany("careers.ey.com/ey"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("4210 jobs");
+    }
+
+    @Test
+    void successFactorsStopsWhenAPageAddsNoNewJobs() throws IOException {
+        // A site that ignores startrow keeps sending the first page: read it once, not forever.
+        server.expect(requestTo("https://careers.ey.com/ey/search/?locationsearch=Greece&startrow=0"))
+                .andRespond(withSuccess(fixture("successfactors-table-1.html"), MediaType.TEXT_HTML));
+        server.expect(requestTo("https://careers.ey.com/ey/search/?locationsearch=Greece&startrow=2"))
+                .andRespond(withSuccess(fixture("successfactors-table-1.html"), MediaType.TEXT_HTML));
+
+        assertThat(new SuccessFactorsSource(builder, companies, scorer).fetchCompany(EY_SLUG)).hasSize(2);
+        server.verify();
+    }
 }

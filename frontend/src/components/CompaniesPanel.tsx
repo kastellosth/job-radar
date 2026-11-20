@@ -95,8 +95,9 @@ export function CompaniesPanel({ apiKey }: Props) {
         </button>
       </form>
       <p className="hint">
-        Workable, Greenhouse, Lever or SmartRecruiters careers page. For Workday (e.g. Accenture, PwC), filter the
-        job search to Greece on the company&apos;s site first and paste that link.
+        Workable, Greenhouse, Lever or SmartRecruiters careers page. For Workday (e.g. Accenture, PwC) and
+        SuccessFactors sites (e.g. EY, Vodafone, Kotsovolos: links with /search/), search for Greece on the
+        company&apos;s site first and paste the results link.
       </p>
       {note && (
         <p className="note" role="note">

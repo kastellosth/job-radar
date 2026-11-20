@@ -71,8 +71,8 @@ public class JobScorer {
 
     /** Whether a place is one he accepts, e.g. to list a job's Greek office first among several. */
     public boolean acceptsPlace(String place) {
-        String p = lower(place);
-        return !p.isBlank() && profile.locations().stream().map(JobScorer::lower).anyMatch(p::contains);
+        String p = withoutAccents(lower(place));
+        return !p.isBlank() && profile.locations().stream().map(l -> withoutAccents(lower(l))).anyMatch(p::contains);
     }
 
     Bucket bucketFor(int score) {
@@ -86,11 +86,12 @@ public class JobScorer {
         if (posting.remote() || profile.locations().isEmpty()) {
             return true;
         }
-        String location = lower(posting.location());
+        String location = withoutAccents(lower(posting.location()));
         if (location.isBlank()) {
             return true; // unknown: let him decide rather than silently drop it
         }
-        return profile.locations().stream().map(JobScorer::lower).anyMatch(location::contains);
+        // Without accents: "ΑΘΗΝΑ" in capitals carries none, so it must still match "αθήνα".
+        return profile.locations().stream().map(l -> withoutAccents(lower(l))).anyMatch(location::contains);
     }
 
     /** Accents are ignored here: Greek titles in capitals ("ΠΡΟΓΡΑΜΜΑΤΙΣΤΗΣ") carry none. */

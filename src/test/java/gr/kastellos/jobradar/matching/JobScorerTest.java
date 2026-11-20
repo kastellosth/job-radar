@@ -22,7 +22,7 @@ class JobScorerTest {
                     Map.of("junior", 4, "graduate", 4),
                     Map.of("senior", -8, "manager", -5),
                     Map.of("german", -6),
-                    List.of("greece", "athens", "thessaloniki", "heraklion"),
+                    List.of("greece", "athens", "thessaloniki", "heraklion", "αθήνα", "ηράκλειο"),
                     List.of("developer", "engineer", "προγραμματιστής"),
                     9, 5, 2)));
 
@@ -147,5 +147,16 @@ class JobScorerTest {
     @CsvSource({"9, STRONG", "12, STRONG", "5, GOOD", "8, GOOD", "2, STRETCH", "4, STRETCH", "1, SKIP", "-5, SKIP"})
     void bucketsFollowThresholds(int score, Bucket expected) {
         assertThat(scorer.bucketFor(score)).isEqualTo(expected);
+    }
+
+    @Test
+    void placesInGreekCapitalsWithoutAccentsAreAccepted() {
+        MatchResult r = scorer.score(posting("Junior Java Developer", "ΑΘΗΝΑ", false, "Java"));
+        MatchResult suburb = scorer.score(posting("Junior Java Developer", "ΝΕΟ ΗΡΑΚΛΕΙΟ", false, "Java"));
+
+        assertThat(r.bucket()).isNotEqualTo(Bucket.SKIP);
+        assertThat(suburb.bucket()).isNotEqualTo(Bucket.SKIP);
+        assertThat(scorer.acceptsPlace("ΘΕΣΣΑΛΟΝΙΚΗ")).isFalse();
+        assertThat(scorer.acceptsPlace("Athens, 112 A Vasilissis Sofia")).isTrue();
     }
 }

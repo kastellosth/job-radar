@@ -8,7 +8,8 @@ public enum Provider {
     SMARTRECRUITERS("SmartRecruiters"),
     GREENHOUSE("Greenhouse"),
     LEVER("Lever"),
-    WORKDAY("Workday");
+    WORKDAY("Workday"),
+    SUCCESSFACTORS("SuccessFactors");
 
     private final String displayName;
 

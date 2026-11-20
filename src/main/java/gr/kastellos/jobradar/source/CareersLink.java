@@ -20,7 +20,8 @@ import java.util.stream.Collectors;
  * A company's careers page link, turned into the job board and the company's id on it.
  * Examples: apply.workable.com/learnworlds, boards.greenhouse.io/kaizengaming,
  * jobs.lever.co/acme, careers.smartrecruiters.com/NetcompanyIntrasoft,
- * accenture.wd103.myworkdayjobs.com/AccentureCareers?locationCountry=566388c1eb974c42bd9e3da4c2f57d60.
+ * accenture.wd103.myworkdayjobs.com/AccentureCareers?locationCountry=566388c1eb974c42bd9e3da4c2f57d60,
+ * careers.ey.com/ey/search/?q=&locationsearch=Greece (SuccessFactors, on the company's own domain).
  */
 public record CareersLink(Provider provider, String slug) {
 
@@ -34,6 +35,11 @@ public record CareersLink(Provider provider, String slug) {
     /** Workday filter values are ids like 566388c1eb974c42bd9e3da4c2f57d60; anything else in the link is ignored. */
     private static final Pattern WORKDAY_FACET_ID = Pattern.compile("[0-9a-fA-F]{32}");
     private static final Pattern WORKDAY_FACET_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9_]{0,60}");
+    /** A public domain name; an IP address or a one-word host (localhost) is not a company's careers site. */
+    private static final Pattern HOST = Pattern.compile("([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}");
+    private static final Pattern SITE_PART = Pattern.compile("[A-Za-z0-9_-]{1,60}");
+    /** SuccessFactors search parameters that choose which jobs; the rest (createNewAlert, startrow...) are dropped. */
+    private static final Pattern SUCCESSFACTORS_FILTER = Pattern.compile("q|locationsearch|locale|optionsFacetsDD_[A-Za-z_]{1,40}");
 
     /** @throws IllegalArgumentException with a message that can be shown to the user */
     public static CareersLink parse(String text) {
@@ -69,8 +75,43 @@ public record CareersLink(Provider provider, String slug) {
         if (workday.matches()) {
             return workday(workday.group(1), workday.group(2), path, uri.getRawQuery(), text);
         }
-        throw new IllegalArgumentException(
-                "Only Workable, Greenhouse, Lever, SmartRecruiters and Workday careers pages are supported: " + text);
+        // SuccessFactors sites live on the company's own domain; their search page is .../search/?...
+        // Adding the company then checks the page really is one.
+        if (!path.isEmpty() && path.get(path.size() - 1).equalsIgnoreCase("search") && HOST.matcher(host).matches()) {
+            return successFactors(host, path.subList(0, path.size() - 1), uri.getRawQuery(), text);
+        }
+        throw new IllegalArgumentException("Only Workable, Greenhouse, Lever, SmartRecruiters and Workday careers"
+                + " pages, and SuccessFactors job searches (a link with /search/), are supported: " + text);
+    }
+
+    /**
+     * A SuccessFactors job search: host, the site's path before /search (EY has /ey) and the filters that choose
+     * jobs, sorted: "careers.ey.com/ey?locationsearch=Greece".
+     */
+    private static CareersLink successFactors(String host, List<String> site, String rawQuery, String text) {
+        if (site.size() > 2 || !site.stream().allMatch(s -> SITE_PART.matcher(s).matches())) {
+            throw new IllegalArgumentException("Not a job search link: " + text);
+        }
+        TreeSet<String> filters = new TreeSet<>();
+        if (rawQuery != null) {
+            for (String pair : rawQuery.split("&")) {
+                int eq = pair.indexOf('=');
+                if (eq <= 0) {
+                    continue;
+                }
+                String key = URLDecoder.decode(pair.substring(0, eq), StandardCharsets.UTF_8);
+                String value = URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8).trim();
+                if (SUCCESSFACTORS_FILTER.matcher(key).matches() && !value.isEmpty() && value.length() <= 100) {
+                    filters.add(key + "=" + URLEncoder.encode(value, StandardCharsets.UTF_8));
+                }
+            }
+        }
+        String slug = host + (site.isEmpty() ? "" : "/" + String.join("/", site))
+                + (filters.isEmpty() ? "" : "?" + String.join("&", filters));
+        if (slug.length() > 255) {
+            throw new IllegalArgumentException("That job search link has too many filters. Keep only the place");
+        }
+        return new CareersLink(Provider.SUCCESSFACTORS, slug);
     }
 
     /**
@@ -121,10 +162,19 @@ public record CareersLink(Provider provider, String slug) {
      */
     public String defaultName() {
         if (provider == Provider.WORKDAY) {
-            String tenant = slug.substring(0, slug.indexOf('.'));
-            return tenant.length() <= 3 ? tenant.toUpperCase(Locale.ROOT) : nameFromSlug(tenant);
+            return acronymOrName(slug.substring(0, slug.indexOf('.')));
+        }
+        if (provider == Provider.SUCCESSFACTORS) {
+            // The company's domain: careers.ey.com -> "EY", career.kotsovolos.gr -> "Kotsovolos".
+            String host = slug.split("[/?]", 2)[0];
+            String[] labels = host.split("\\.");
+            return acronymOrName(labels.length >= 2 ? labels[labels.length - 2] : host);
         }
         return nameFromSlug(slug);
+    }
+
+    private static String acronymOrName(String word) {
+        return word.length() <= 3 ? word.toUpperCase(Locale.ROOT) : nameFromSlug(word);
     }
 
     static String nameFromSlug(String slug) {
