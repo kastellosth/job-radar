@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Job } from './api'
-import { ALL, DEFAULT_VIEW, companiesIn, timeAgo, visibleJobs } from './jobView'
+import { ALL, DEFAULT_VIEW, companiesIn, formatDate, timeAgo, visibleJobs } from './jobView'
 
 function job(id: number, title: string, company: string, postedAt: string | null, firstSeenAt = '2026-11-01T00:00:00Z'): Job {
   return {
@@ -69,5 +69,12 @@ describe('timeAgo', () => {
     ['2026-11-20T12:00:00Z', 'today'],
   ])('%s is "%s"', (iso, expected) => {
     expect(timeAgo(iso, now)).toBe(expected)
+  })
+})
+
+describe('formatDate', () => {
+  it('writes the day in Athens time', () => {
+    expect(formatDate('2026-11-16T09:00:00Z')).toBe('16 Nov 2026')
+    expect(formatDate('2026-11-15T22:30:00Z')).toBe('16 Nov 2026')
   })
 })

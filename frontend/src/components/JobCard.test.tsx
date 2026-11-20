@@ -53,12 +53,18 @@ describe('JobCard', () => {
     expect(screen.getByRole('button', { name: 'applied' })).toBeEnabled()
   })
 
-  it('says when the job was posted, or when it was found if the board gives no date', () => {
-    const { rerender } = render(<JobCard job={job} onStatus={noop} onOpen={noop} />)
-    expect(screen.getByText('posted 3 days ago')).toBeInTheDocument()
+  it('shows the date the job was posted, or the date it was found if the board gives none', () => {
+    const { container, rerender } = render(<JobCard job={job} onStatus={noop} onOpen={noop} />)
+    expect(container.querySelector('.date')).toHaveTextContent('Posted 16 Nov 2026 · 3 days ago')
 
     rerender(<JobCard job={{ ...job, postedAt: null }} onStatus={noop} onOpen={noop} />)
-    expect(screen.getByText('found yesterday')).toBeInTheDocument()
+    expect(container.querySelector('.date')).toHaveTextContent('Found 18 Nov 2026 · yesterday')
+  })
+
+  it('uses the Athens date, so a job posted just after midnight is not shown a day early', () => {
+    const { container } = render(<JobCard job={{ ...job, postedAt: '2026-11-15T22:30:00Z' }} onStatus={noop} onOpen={noop} />)
+
+    expect(container.querySelector('.date')).toHaveTextContent('Posted 16 Nov 2026')
   })
 
   it('reports when its link is opened', async () => {

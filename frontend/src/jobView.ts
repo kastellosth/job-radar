@@ -56,6 +56,19 @@ export function companiesIn(jobs: GroupedJobs): CompanyCount[] {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
 }
 
+// Athens time, so a job posted at 01:00 on the 16th does not show as the 15th.
+const dateFormat = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'Europe/Athens',
+})
+
+/** "16 Nov 2026" */
+export function formatDate(iso: string): string {
+  return dateFormat.format(new Date(iso))
+}
+
 const DAY = 24 * 60 * 60 * 1000
 const relative = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
 

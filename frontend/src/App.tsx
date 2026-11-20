@@ -142,7 +142,7 @@ export default function App() {
         {BUCKETS.map((bucket) => {
           const shown = visibleJobs(jobs[bucket], view)
           return (
-            <section key={bucket} aria-label={LABELS[bucket]}>
+            <section key={bucket} className={`bucket bucket-${bucket}`} aria-label={LABELS[bucket]}>
               <h2>
                 {LABELS[bucket]} ({shown.length})
               </h2>
