@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
  * so this reads the search results page itself, the part robots.txt allows; a redesign can break it, which then
  * shows as a failing board in the dashboard while the jobs it found before stay.
  *
- * The tracked "slug" is the search: host, the site's path (EY has one: /ey) and the filters from the link he pasted,
+ * The tracked "slug" is the search: host, the site's path (EY has one: /ey) and the filters from the link you pasted,
  * e.g. "careers.ey.com/ey?locationsearch=Greece". Results come 25 or 30 per page (a table, or cards), walked with
  * startrow. The list has title, link and place, sometimes a date; during a fetch run the job's own page is read
  * for the jobs that could score, which gives the description and the posting date.

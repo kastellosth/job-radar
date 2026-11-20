@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Fetch from every source -> drop duplicates -> score -> insert new / refresh known.
- * A job he already marked APPLIED or HIDDEN keeps that status when it shows up again.
+ * A job you already marked APPLIED or HIDDEN keeps that status when it shows up again.
  *
  * The job boards are called before the database transaction starts, so slow boards never hold a connection,
  * and only one run at a time is allowed: two runs inserting the same new job would make one of them fail.

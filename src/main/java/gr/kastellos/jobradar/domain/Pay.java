@@ -7,7 +7,7 @@ package gr.kastellos.jobradar.domain;
  * @param max      highest amount
  * @param currency ISO code: EUR, USD, GBP
  * @param period   what the amount is for
- * @param text     the sentence it came from, so he can read it as written (gross or net, 14 salaries...)
+ * @param text     the sentence it came from, so you can read it as written (gross or net, 14 salaries...)
  */
 public record Pay(int min, int max, String currency, Period period, String text) {
 

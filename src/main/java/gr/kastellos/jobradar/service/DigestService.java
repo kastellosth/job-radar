@@ -24,7 +24,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 /**
- * Once a week, an email with the STRONG matches first seen in the last 7 days that he has not acted on yet
+ * Once a week, an email with the STRONG matches first seen in the last 7 days that you have not acted on yet
  * (still NEW or SEEN) and that a board still lists. No email in a week without any.
  * Off until radar.digest.to is set.
  */

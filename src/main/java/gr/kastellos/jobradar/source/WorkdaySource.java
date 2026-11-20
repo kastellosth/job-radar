@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
  * It is not a documented API, so the parsing here is kept small and tested against saved answers.
  *
  * The tracked "slug" is the search itself, e.g. "accenture.wd103/AccentureCareers?locationCountry=566388c1...":
- * he filters the company's site to Greece and pastes that link (see CareersLink), and every run repeats that search.
+ * you filter the company's site to Greece and paste that link (see CareersLink), and every run repeats that search.
  * The list has a title and a rough date at most; during a fetch run the full ad is read for jobs that could score,
  * which gives the description, the offices and the real posting date.
  */

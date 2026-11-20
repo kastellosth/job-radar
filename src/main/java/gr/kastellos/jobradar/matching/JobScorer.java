@@ -69,7 +69,7 @@ public class JobScorer {
         return locationAccepted(posting) && softwareRole(lower(posting.title()));
     }
 
-    /** Whether a place is one he accepts, e.g. to list a job's Greek office first among several. */
+    /** Whether a place is one you accept, e.g. to list a job's Greek office first among several. */
     public boolean acceptsPlace(String place) {
         String p = withoutAccents(lower(place));
         return !p.isBlank() && profile.locations().stream().map(l -> withoutAccents(lower(l))).anyMatch(p::contains);
@@ -88,7 +88,7 @@ public class JobScorer {
         }
         String location = withoutAccents(lower(posting.location()));
         if (location.isBlank()) {
-            return true; // unknown: let him decide rather than silently drop it
+            return true; // unknown: let you decide rather than silently drop it
         }
         // Without accents: "ΑΘΗΝΑ" in capitals carries none, so it must still match "αθήνα".
         return profile.locations().stream().map(l -> withoutAccents(lower(l))).anyMatch(location::contains);
@@ -121,7 +121,7 @@ public class JobScorer {
 
     /**
      * The biggest "N years" number mentioned is a rough proxy for required experience.
-     * 0-2 years is fine for him; each year beyond that costs 2 points.
+     * 0-2 years is fine for you; each year beyond that costs 2 points.
      */
     private static int experiencePenalty(String text, List<String> reasons) {
         int max = 0;

@@ -74,7 +74,7 @@ public class CompanyController {
 
     /**
      * Stops reading the company's board. Its jobs stay in the database with their statuses, but leave the
-     * dashboard once they have not been listed for radar.hide-unlisted-after (jobs he applied to stay).
+     * dashboard once they have not been listed for radar.hide-unlisted-after (jobs you applied to stay).
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

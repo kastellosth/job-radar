@@ -118,7 +118,7 @@ class IngestServiceIT {
     }
 
     @Test
-    void secondRunKeepsHisStatusAndWritesTheNewScoreToTheDatabase() {
+    void secondRunKeepsYourStatusAndWritesTheNewScoreToTheDatabase() {
         JobPosting posting = junior("board-a", "Acme S.A.", "Java and Spring Boot. 0-2 years.");
         boardA.willReturn(posting);
         ingest.run();

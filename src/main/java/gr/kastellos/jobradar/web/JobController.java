@@ -49,7 +49,7 @@ public class JobController {
     }
 
     /**
-     * Jobs grouped by bucket, best first. By default hides SKIP jobs and anything he hid or was rejected from.
+     * Jobs grouped by bucket, best first. By default hides SKIP jobs and anything you hid or were rejected from.
      * Jobs no board has listed for a while are closed and left out (see radar.hide-unlisted-after).
      * Example: GET /api/jobs?status=NEW,SEEN
      */

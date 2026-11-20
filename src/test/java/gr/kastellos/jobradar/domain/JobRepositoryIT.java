@@ -77,7 +77,7 @@ class JobRepositoryIT {
     }
 
     @Test
-    void dashboardQueryLeavesOutJobsNoBoardListsAnyMoreExceptOnesHeAppliedTo() {
+    void dashboardQueryLeavesOutJobsNoBoardListsAnyMoreExceptOnesYouAppliedTo() {
         Job applied = job("Closed but applied", 8, GOOD, T0);
         applied.setStatus(JobStatus.APPLIED);
         jobs.saveAllAndFlush(List.of(
@@ -94,7 +94,7 @@ class JobRepositoryIT {
     }
 
     @Test
-    void weeklyEmailQueryFindsNewStrongJobsHeHasNotActedOnThatAreStillListed() {
+    void weeklyEmailQueryFindsNewStrongJobsYouHaveNotActedOnThatAreStillListed() {
         Instant weekStart = T0;
         Job applied = job("Applied", 12, STRONG, T0.plusSeconds(3600));
         applied.setStatus(JobStatus.APPLIED);

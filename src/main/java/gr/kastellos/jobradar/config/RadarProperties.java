@@ -24,7 +24,7 @@ public record RadarProperties(Sources sources, Profile profile) {
      * @param titlePenalties  keyword -> points (negative) when it is in the title, e.g. "senior"; only the title,
      *                        because ads often say "you will report to the engineering manager"
      * @param penalties       keyword -> points (negative) when it appears anywhere, e.g. "german"
-     * @param locations       locations he accepts; a posting elsewhere (and not remote) is dropped
+     * @param locations       locations you accept; a posting elsewhere (and not remote) is dropped
      * @param roleKeywords    a title must contain one of these to count as a software job; empty = no filter
      * @param strongThreshold score at or above which a job is a strong match
      * @param goodThreshold   score at or above which a job is a good match; below that it is a stretch or skipped

@@ -85,7 +85,7 @@ public class Job {
         return job;
     }
 
-    /** Called when the same job shows up again: keep his status, update everything else. */
+    /** Called when the same job shows up again: keep your status, update everything else. */
     public void refresh(JobPosting posting, MatchResult match, Instant now) {
         this.source = posting.source();
         this.externalId = posting.externalId();

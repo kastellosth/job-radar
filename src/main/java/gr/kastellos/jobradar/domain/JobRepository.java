@@ -15,7 +15,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     /**
      * The dashboard list, best first. A job is taken as closed, and left out, when it has not been listed since
      * {@code listedSince} although its board has been read fine after that: a board that is down or broken keeps
-     * its jobs (its last good read still includes them). Jobs he applied to always stay, so he can follow up.
+     * its jobs (its last good read still includes them). Jobs you applied to always stay, so you can follow up.
      */
     @Query("""
             select j from Job j
